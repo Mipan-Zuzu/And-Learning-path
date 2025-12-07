@@ -17,7 +17,7 @@ let token
 const app = express();
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://and-navy.vercel.app/",
     credentials: true,
   })
 );

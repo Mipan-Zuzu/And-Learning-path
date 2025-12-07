@@ -28,7 +28,7 @@ const LoginPage = () => {
     }
 
     const checkLogin = async () => {
-      const res = await fetch("http://localhost:5000/login", {
+      const res = await fetch("https://and-api-ten.vercel.app/login", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -46,7 +46,7 @@ const LoginPage = () => {
 
       if (data.login === true) {
         console.log(data.login)
-        // window.location.href = "/home"
+        window.location.href = "/home"
       }
     }
 
