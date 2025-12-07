@@ -28,7 +28,7 @@ const LoginPage = () => {
     }
 
     const checkLogin = async () => {
-      const res = await fetch("https://and-api-ten.vercel.app/login", {
+      const res = await fetch("http://localhost:5000/login", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -39,15 +39,14 @@ const LoginPage = () => {
       })
       const data = await res.json();
       if (data.login === false) {
-        setCheckRes("Email atau password salah");
+        setCheckRes(data.message);
+        console.log(data.login)
         return;
       }
 
       if (data.login === true) {
         console.log(data.login)
-        console.log(data.user)
-        console.log("masuk")
-        window.location.href = "/home"
+        // window.location.href = "/home"
       }
     }
 
