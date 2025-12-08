@@ -5,7 +5,7 @@ export default function ProtectedRoute({ children }) {
     const navigate = useNavigate()
     useEffect(() => {
         const testing = async () => {
-        const res = await fetch("http://localhost:5000/check-session",{
+        const res = await fetch("https://and-api-ten.vercel.app/check-session",{
             method: "GET",
         credentials: "include"
         })
