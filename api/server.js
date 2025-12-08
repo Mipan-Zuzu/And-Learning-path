@@ -17,7 +17,7 @@ let token
 const app = express();
 app.use(
   cors({
-    origin: "https://and-navy.vercel.app/",
+    origin: "http://localhost:5173",
     credentials: true,
   })
 );
@@ -98,10 +98,13 @@ const loginCheck = async (req, res) => {
   } else {
     console.log({message : "ga ada"})
   }
-};
+}
 
 app.get("/logout", (req, res) => {
+  res.clearCookie("tokens", { path: "/" });
+  res.json({ message: "cookie cleared" });
 });
+
 
 
 app.get("/check-session", (req, res) => {
@@ -117,8 +120,8 @@ app.get("/check-session", (req, res) => {
 })
 
 
-app.post("/result", createUser);
-app.get("/api", getAllUsers);
-app.post("/login", loginCheck);
+app.post("/result", createUser)
+app.get("/api", getAllUsers)
+app.post("/login", loginCheck)
 
-app.listen(5000, () => console.log("listening on port :5000"));
+app.listen(5000, () => console.log("listening on port :5000"))

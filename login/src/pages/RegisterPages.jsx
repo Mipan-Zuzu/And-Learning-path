@@ -31,7 +31,7 @@ const RegisterPage = () => {
 
 
         const sendApi = () => {
-            fetch("https://and-api-ten.vercel.app/result", {
+            fetch("http://localhost:5000/result", {
             method : "POST",
             headers : {"Content-Type": "application/json"},
             body : JSON.stringify({ Email: Email ,Password : Password})
@@ -66,6 +66,9 @@ const RegisterPage = () => {
                     placeholder="password">password</Label>
                 </div>
                 <Button type="button" size={"p-2 border w-64"} onClick={sesionLogin}>Login</Button>
+                  <div className="mb-2">  
+        <h2>have an account <a className="text-blue-500 border-b border-blue-500" href="/login">login</a></h2>
+      </div>
             </form>
         </>
     )
