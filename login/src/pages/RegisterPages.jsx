@@ -11,42 +11,40 @@ const RegisterPage = () => {
     
     const [emailCheck, setEmailCheck] = useState()
     const [passwordCheck, setPasswordCheck] = useState()
+    const sesionLogin = async () => {
+    setEmailCheck(null)
+    setPasswordCheck(null)
 
-    const sesionLogin = () => {
+    const Email = inputEmail.current.value
+    const Password = inputPassword.current.value
 
-        setEmailCheck(null)
-        setPasswordCheck(null)
-        
-        
-        const Email = inputEmail.current.value
-        const Password = inputPassword.current.value
-        
-        Password === "" ? setPasswordCheck("password empty") : console.log({message : "password valid"})
-        validator.isEmail(Email) === true ? console.log(Email) : setEmailCheck("Email not valid")
+    if (Password === "") setPasswordCheck("password empty")
+    if (!validator.isEmail(Email)) setEmailCheck("Email not valid")
+    if (Email === "" && Password === "") return
 
-        if(Email === "" && Password === ""){
-            console.log("Email tidak terdaftar")
-            return
+    const sendApi = async () => {
+        try {
+            const res = await fetch(`https://and-api-ten.vercel.app/result`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ Email, Password }),
+            });
+
+            return await res.json();
+        } catch (err) {
+            console.error(err);
         }
+    };
 
+    if (validator.isEmail(Email) && Password !== "") {
+        console.log("Kirim data...");
+        const result = await sendApi(); 
 
-        const sendApi = () => {
-            fetch("https://and-api-ten.vercel.app/result", {
-            method : "POST",
-            headers : {"Content-Type": "application/json"},
-            body : JSON.stringify({ Email: Email ,Password : Password})
-        }).then((res) => res.json())
-        .catch((err) => console.error(err))
-        }
-
-
-        if(validator.isEmail(Email) === true && Password !== "") {
-            console.log({message : "login berhasil terkirim"})
-            sendApi()
-            window.location.href = "/login"
+        if (result?.user) {
+            window.location.href = "/login";
         }
     }
-
+};
 
     return (
         <>

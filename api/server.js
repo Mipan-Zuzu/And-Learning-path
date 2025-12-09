@@ -15,12 +15,12 @@ const acctoken = process.env.ACC_TOKEN;
 let token
 
 const app = express();
-app.use(
-  cors({
-    origin: "https://and-navy.vercel.app",
-    credentials: true,
-  })
-);
+
+app.use(cors({
+  origin: "https://and-navy.vercel.app",
+  credentials: true
+}));
+
 app.use(express.json());
 
 
@@ -86,9 +86,11 @@ const loginCheck = async (req, res) => {
   if(token.length > 0) {
     return res
     .cookie(acctoken, token, {
-      httpOnly : true,
-      secure : process.env.NODE_ENV === "production"
-    })
+  httpOnly: true,
+  secure: true,     
+  sameSite: "none",    
+  path: "/"
+})
     .status(200)
     .json({login: true, message : "login berhasil"})
   }
@@ -108,7 +110,7 @@ app.get("/logout", (req, res) => {
 
 
 app.get("/check-session", (req, res) => {
-    const data = req.cookies[process.env.VAL_ACC]
+    const data = req.cookies[acctoken]
     if(!data) return res.json({login : false})
 
     try {
