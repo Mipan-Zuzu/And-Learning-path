@@ -172,7 +172,7 @@ function Dhasboard() {
         className="w-20 flex flex-col items-center pt-5 pb-5"
         style={{ backgroundColor: "#E5E5E5", borderRight: "1px solid #C0C0C0" }}
         >
-          <img src="./../../public/img/icon.png" alt="logo&" width={50} />
+          <img src="/img/icon.png" alt="logo&" width={50} />
         <div className="mb-8 cursor-pointer opacity-60 hover:opacity-100 transition">
         </div>
         <div className="flex-1 flex flex-col gap-5">
