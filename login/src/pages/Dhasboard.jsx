@@ -40,7 +40,7 @@ function Dhasboard() {
   const [disturb, setdisturb] = useState(false)
   const [pin, setpin] = useState("")
   
-  const sound = new Audio('../../public/sound/buble.mp3')
+  const sound = new Audio('/sound/buble.mp3')
   
   const toggleDisturb = () => {
     setdisturb((prev) => !prev);
@@ -232,7 +232,7 @@ function Dhasboard() {
         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-3">
         <h1 className="text-center text-gray-400 font-mono opacity-25">#Senang belajar dengan <span className="text-black">&And</span></h1>
           {messages.length === 0 ? (
-            <p className="text-center text-gray-400 mt-10 loading">loading message 99%</p>
+            <p className="text-center text-gray-400 mt-10 loading">fetching message 98%</p>
           ) : (
             messages.map((msg, index) => {
               const isOwnMessage = msg.nama === nama;
