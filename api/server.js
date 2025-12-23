@@ -1,10 +1,11 @@
 const express = require("express");
 const cors = require("cors");
 const { default: mongoose } = require("mongoose");
-const User = require("./model/model");
+const { User, Chat } = require("./model/model");
 const dotenv = require("dotenv")
 const jwt = require('jsonwebtoken');
 const cookieParser = require("cookie-parser");
+
 
 dotenv.config();
 
@@ -15,14 +16,18 @@ const acctoken = process.env.ACC_TOKEN;
 let token
 
 const app = express();
+const port = process.env.PORT || 5000;
+const nodeEnv = process.env.NODE_ENV || 'development';
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-app.use(cors({
-  origin: "https://and-navy.vercel.app",
-  credentials: true
-}));
-
-app.use(express.json());
-
+app.use(
+  cors({
+    origin: frontendUrl.split(',').map(url => url.trim()),
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 app.use(cookieParser());
 
@@ -82,15 +87,14 @@ const loginCheck = async (req, res) => {
   
   const payload = {id : user._id}
   token = jwt.sign(payload, secretkey, {expiresIn : "5m"})
-  console.log({token : token})
   if(token.length > 0) {
     return res
     .cookie(acctoken, token, {
-  httpOnly: true,
-  secure: true,     
-  sameSite: "none",    
-  path: "/"
-})
+      httpOnly : true,
+      secure : nodeEnv === "production",
+      sameSite: 'lax',
+      maxAge: 5 * 60 * 1000
+    })
     .status(200)
     .json({login: true, message : "login berhasil"})
   }
@@ -110,7 +114,7 @@ app.get("/logout", (req, res) => {
 
 
 app.get("/check-session", (req, res) => {
-    const data = req.cookies[acctoken]
+    const data = req.cookies[process.env.VAL_ACC]
     if(!data) return res.json({login : false})
 
     try {
@@ -122,8 +126,102 @@ app.get("/check-session", (req, res) => {
 })
 
 
+app.delete("/chatDirect/:id", async (req, res) => {
+  const findChat = await Chat.findByIdAndDelete (
+    req.params.id,
+    req.body,
+    {new : true, ValidityState : true}
+  )
+  console.log(findChat)
+  res.json(findChat)
+  findChat()
+})
+
+// todo : socket 
+// todo : socket
+const http = require("http")
+const server = http.createServer(app)
+const { Server } = require("socket.io")
+
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    credentials: true
+  }
+})
+
+const onlineUsers = new Map()
+
+io.on("connection", client => {
+  console.log("Client connected")
+
+  client.on("userOnline", (userData) => {
+    try {
+      const { nama, profesi, profileImage } = userData
+      onlineUsers.set(client.id, { nama, profesi, profileImage })
+      
+      io.emit("userStatusUpdate", {
+        type: "online",
+        user: { nama, profesi, profileImage }
+      })
+      
+      console.log("User online:", nama, "Total:", onlineUsers.size)
+    } catch (error) {
+      console.error("Error user online:", error)
+    }
+  })
+
+  client.on("sendMessage", async (data) => {
+    try {
+      const { nama, profesi, pesan, profileImage } = data
+      
+      const newChat = new Chat({ nama, profesi, pesan, profileImage })
+      await newChat.save()
+      
+      io.emit("receiveMessage", { nama, profesi, pesan, profileImage, timestamp: new Date() })
+      
+      console.log("Chat saved:", { nama, profesi, pesan })
+    } catch (error) {
+      console.error("Error saving chat:", error)
+    }
+  })
+
+  client.on("getMessages", async () => {
+    try {
+      const chats = await Chat.find().sort({ timestamp: 1 })
+      client.emit("allMessages", chats)
+    } catch (error) {
+      console.error("Error fetching chats:", error)
+    }
+  })
+
+  // Get online users
+  client.on("getOnlineUsers", () => {
+    try {
+      const users = Array.from(onlineUsers.values())
+      client.emit("onlineUsersList", users)
+    } catch (error) {
+      console.error("Error fetching online users:", error)
+    }
+  })
+
+  client.on("disconnect", () => {
+    const user = onlineUsers.get(client.id)
+    if (user) {
+      onlineUsers.delete(client.id)
+      
+      io.emit("userStatusUpdate", {
+        type: "offline",
+        user: user
+      })
+      
+      console.log("User offline:", user.nama, "Total:", onlineUsers.size)
+    }
+  })
+})
+
 app.post("/result", createUser)
 app.get("/api", getAllUsers)
 app.post("/login", loginCheck)
 
-app.listen(5000, () => console.log("listening on port :5000"))
+server.listen(port, () => console.log(`listening on port :${port} [${nodeEnv}]`))

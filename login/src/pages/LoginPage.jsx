@@ -23,11 +23,11 @@ const LoginPage = () => {
     const Password = inputPassword.current.value;
     if (!Email && !Password) {
       setCheckVal("password dan Email harus di isi");
-      return;
+      return
     }
 
     const checkLogin = async () => {
-      const res = await fetch("https://and-navy.vercel.app/login", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/login`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

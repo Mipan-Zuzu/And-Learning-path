@@ -7,6 +7,7 @@ import RegisterPage from "./pages/RegisterPages";
 import LoginPage from "./pages/LoginPage";
 import Main from "./pages/Main"
 import ProtectedRoute from "./service/RequireLogin"
+import Dashboard from "./pages/Dhasboard";
 
 
 const router = createBrowserRouter([
@@ -34,7 +35,16 @@ const router = createBrowserRouter([
       <Main />
     </ProtectedRoute>
   ),
-}
+  },
+
+  {
+    path : "/dashboard",
+    element : (
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    )
+  }
 
 
 ])

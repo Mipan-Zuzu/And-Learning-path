@@ -11,40 +11,42 @@ const RegisterPage = () => {
     
     const [emailCheck, setEmailCheck] = useState()
     const [passwordCheck, setPasswordCheck] = useState()
-    const sesionLogin = async () => {
-    setEmailCheck(null)
-    setPasswordCheck(null)
 
-    const Email = inputEmail.current.value
-    const Password = inputPassword.current.value
+    const sesionLogin = () => {
 
-    if (Password === "") setPasswordCheck("password empty")
-    if (!validator.isEmail(Email)) setEmailCheck("Email not valid")
-    if (Email === "" && Password === "") return
+        setEmailCheck(null)
+        setPasswordCheck(null)
+        
+        
+        const Email = inputEmail.current.value
+        const Password = inputPassword.current.value
+        
+        Password === "" ? setPasswordCheck("password empty") : console.log({message : "password valid"})
+        validator.isEmail(Email) === true ? console.log(Email) : setEmailCheck("Email not valid")
 
-    const sendApi = async () => {
-        try {
-            const res = await fetch(`https://and-api-ten.vercel.app/result`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ Email, Password }),
-            });
-
-            return await res.json();
-        } catch (err) {
-            console.error(err);
+        if(Email === "" && Password === ""){
+            console.log("Email tidak terdaftar")
+            return
         }
-    };
 
-    if (validator.isEmail(Email) && Password !== "") {
-        console.log("Kirim data...");
-        const result = await sendApi(); 
 
-        if (result?.user) {
-            window.location.href = "/login";
+        const sendApi = () => {
+            fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/result`, {
+            method : "POST",
+            headers : {"Content-Type": "application/json"},
+            body : JSON.stringify({ Email: Email ,Password : Password})
+        }).then((res) => res.json())
+        .catch((err) => console.error(err))
+        }
+
+
+        if(validator.isEmail(Email) === true && Password !== "") {
+            console.log({message : "login berhasil terkirim"})
+            sendApi()
+            window.location.href = "/login"
         }
     }
-};
+
 
     return (
         <>
