@@ -75,36 +75,39 @@ const createUser = async (req, res) => {
 };
 
 const loginCheck = async (req, res) => {
-  const { Email, Password } = req.body;
-  
-  const user = await User.findOne({ Email, Password });
-  if (!user) {
-    return res.json({
-      login: false,
-      message: "Email atau password salah",
-    });
+  try {
+    const { Email, Password } = req.body;
+
+    if (!Email || !Password) {
+      return res
+        .status(400)
+        .json({ login: false, message: "Email dan Password kosong silakan isi dahulu" });
+    }
+
+    console.log("login attempt:", { Email });
+
+    const user = await User.findOne({ Email, Password });
+    if (!user) {
+      return res.status(401).json({ login: false, message: "Email atau password salah" });
+    }
+
+    const payload = { id: user._id };
+    const newToken = jwt.sign(payload, secretkey, { expiresIn: "5m" });
+
+    res
+      .cookie(acctoken, newToken, {
+        httpOnly: true,
+        secure: nodeEnv === "production",
+        sameSite: "lax",
+        maxAge: 5 * 60 * 1000,
+      })
+      .status(200)
+      .json({ login: true, message: "login berhasil" });
+  } catch (error) {
+    console.error("loginCheck error:", error);
+    return res.status(500).json({ login: false, message: "internal server error", error: error.message });
   }
-  
-  const payload = {id : user._id}
-  token = jwt.sign(payload, secretkey, {expiresIn : "5m"})
-  if(token.length > 0) {
-    return res
-    .cookie(acctoken, token, {
-      httpOnly : true,
-      secure : nodeEnv === "production",
-      sameSite: 'lax',
-      maxAge: 5 * 60 * 1000
-    })
-    .status(200)
-    .json({login: true, message : "login berhasil"})
-  }
-  
-  if (req.cookies.access_token) {
-    console.log({message : "ada"})
-  } else {
-    console.log({message : "ga ada"})
-  }
-}
+};
 
 app.get("/logout", (req, res) => {
   res.clearCookie("tokens", { path: "/" });
