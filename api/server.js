@@ -39,10 +39,12 @@ mongoose
 .connect(
   `mongodb+srv://${dbUser}:${dbPass}@cluster0.kvl3gwe.mongodb.net/people`
 )
-.then(() => console.log("connected"));
+.then(() => console.log("connected to mongodb"))
+.catch((err) => console.error("mongodb connection error:", err));
 
 const createUser = async (req, res) => {
   try {
+    console.log("createUser request body:", req.body);
     const { Email, Password } = req.body;
     if (!Email || !Password) {
       return res
@@ -53,11 +55,13 @@ const createUser = async (req, res) => {
     const newUser = new User({ Email, Password });
     const savedUser = await newUser.save();
 
+    console.log("user saved:", savedUser._id);
+
     return res
       .status(201)
       .json({ message: "berhasil di tambahkan", user: savedUser });
     } catch (error) {
-      console.error(error);
+      console.error("createUser error:", error);
     return res
     .status(500)
       .json({ message: "gagal di tambahkan", error: error.message });
@@ -117,16 +121,25 @@ app.get("/logout", (req, res) => {
 
 
 app.get("/check-session", (req, res) => {
-    const data = req.cookies[process.env.VAL_ACC]
-    if(!data) return res.json({login : false})
+  try {
+    const cookieName = process.env.VAL_ACC || acctoken || "access_token";
+    console.log("/check-session cookies:", req.cookies, "using cookieName:", cookieName);
+
+    const data = req.cookies[cookieName];
+    if (!data) return res.status(200).json({ login: false });
 
     try {
-      const decode = jwt.verify(data, process.env.AUTH_KEY)
-      return res.json({login : true, user : decode})
-    }catch {
-      return res.json({login : false})
+      const decode = jwt.verify(data, process.env.AUTH_KEY);
+      return res.status(200).json({ login: true, user: decode });
+    } catch (err) {
+      console.error("JWT verify error in /check-session:", err);
+      return res.status(200).json({ login: false });
     }
-})
+  } catch (error) {
+    console.error("check-session unexpected error:", error);
+    return res.status(500).json({ login: false, message: "internal server error", error: error.message });
+  }
+});
 
 
 app.delete("/chatDirect/:id", async (req, res) => {
