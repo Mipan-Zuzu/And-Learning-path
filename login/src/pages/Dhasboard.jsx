@@ -172,7 +172,7 @@ function Dhasboard() {
         className="w-20 flex flex-col items-center pt-5 pb-5"
         style={{ backgroundColor: "#E5E5E5", borderRight: "1px solid #C0C0C0" }}
         >
-          <img src="../../public/img/icon.png" alt="logo&" width={50} />
+          <img src="./../../public/img/icon.png" alt="logo&" width={50} />
         <div className="mb-8 cursor-pointer opacity-60 hover:opacity-100 transition">
         </div>
         <div className="flex-1 flex flex-col gap-5">
@@ -232,7 +232,7 @@ function Dhasboard() {
         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-3">
         <h1 className="text-center text-gray-400 font-mono opacity-25">#Senang belajar dengan <span className="text-black">&And</span></h1>
           {messages.length === 0 ? (
-            <p className="text-center text-gray-400 mt-10">Tidak ada pesan 🥲</p>
+            <p className="text-center text-gray-400 mt-10 loading">loading message 99%</p>
           ) : (
             messages.map((msg, index) => {
               const isOwnMessage = msg.nama === nama;

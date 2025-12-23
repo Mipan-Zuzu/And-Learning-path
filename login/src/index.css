@@ -17,6 +17,19 @@
   background-position: 0 0, 20px 20px;
 }
 
+.loading {
+  -webkit-animation: loading 0.5s infinite;
+  animation: loading 0.5s infinite;
+}
+
+@keyframes loading {
+  0%{
+    opacity: 0;
+  }100%{
+    opacity: 1;
+  }
+}
+
 .crt-bg::before {
   content: "";
   position: absolute;
