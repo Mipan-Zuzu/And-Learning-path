@@ -27,7 +27,7 @@ const LoginPage = () => {
     }
 
     const checkLogin = async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/login`, {
+      const res = await fetch(`https://and-api-ten.vercel.app/login`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

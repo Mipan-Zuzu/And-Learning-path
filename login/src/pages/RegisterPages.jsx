@@ -31,7 +31,7 @@ const RegisterPage = () => {
 
 
         const sendApi = () => {
-            fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/result`, {
+            fetch(`https://and-api-ten.vercel.app/result`, {
             method : "POST",
             headers : {"Content-Type": "application/json"},
             body : JSON.stringify({ Email: Email ,Password : Password})

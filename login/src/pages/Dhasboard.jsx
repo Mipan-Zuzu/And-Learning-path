@@ -22,8 +22,8 @@ import axios from "axios"
 import { BsPinAngleFill } from "react-icons/bs";
 import { IoMdSettings } from "react-icons/io";
 
-// Get API URL from environment or default to localhost
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+// Get API URL from environment or default to production
+const API_URL = "https://and-api-ten.vercel.app";
 
 function Dhasboard() {
   const [socket, setSocket] = useState(null);
