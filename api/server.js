@@ -5,6 +5,7 @@ const { User, Chat } = require("./model/model");
 const dotenv = require("dotenv")
 const jwt = require('jsonwebtoken');
 const cookieParser = require("cookie-parser");
+const rateLimit = require("express-rate-limit");
 
 
 dotenv.config();
@@ -30,6 +31,37 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 app.use(cookieParser());
+
+// Rate limiting configuration
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: "Terlalu banyak request dari IP ini, coba lagi nanti",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Stricter rate limit untuk login dan register
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 attempts per windowMs
+  skipSuccessfulRequests: true, // don't count successful requests
+  message: "Terlalu banyak percobaan login/register, coba lagi dalam 15 menit",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limit untuk POST requests
+const postLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // limit each IP to 10 POST requests per minute
+  message: "Terlalu banyak request, tunggu beberapa saat",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply general rate limiter to all routes
+app.use(generalLimiter);
 
 app.get("/", (req, res) => {
   res.send("home");
@@ -168,11 +200,41 @@ const io = new Server(server, {
 
 const onlineUsers = new Map()
 
+// Rate limit tracker untuk socket events
+const socketRateLimits = new Map()
+
+const checkSocketRateLimit = (clientId, action, limit = 5, window = 10000) => {
+  const key = `${clientId}:${action}`
+  const now = Date.now()
+  
+  if (!socketRateLimits.has(key)) {
+    socketRateLimits.set(key, [now])
+    return true
+  }
+  
+  const timestamps = socketRateLimits.get(key)
+  const recentTimestamps = timestamps.filter(t => now - t < window)
+  
+  if (recentTimestamps.length < limit) {
+    recentTimestamps.push(now)
+    socketRateLimits.set(key, recentTimestamps)
+    return true
+  }
+  
+  return false
+}
+
 io.on("connection", client => {
   console.log("Client connected")
 
   client.on("userOnline", (userData) => {
     try {
+      // Rate limit: max 5 userOnline events per 10 seconds
+      if (!checkSocketRateLimit(client.id, 'userOnline', 5, 10000)) {
+        client.emit("error", { message: "Terlalu sering mengirim request userOnline" })
+        return
+      }
+
       const { nama, profesi, profileImage } = userData
       onlineUsers.set(client.id, { nama, profesi, profileImage })
       
@@ -189,6 +251,12 @@ io.on("connection", client => {
 
   client.on("sendMessage", async (data) => {
     try {
+      // Rate limit: max 10 messages per 30 seconds (prevent spam)
+      if (!checkSocketRateLimit(client.id, 'sendMessage', 10, 30000)) {
+        client.emit("error", { message: "Terlalu sering mengirim pesan, tunggu beberapa saat" })
+        return
+      }
+
       const { nama, profesi, pesan, profileImage } = data
       
       const newChat = new Chat({ nama, profesi, pesan, profileImage })
@@ -204,6 +272,12 @@ io.on("connection", client => {
 
   client.on("getMessages", async () => {
     try {
+      // Rate limit: max 20 getMessages per minute
+      if (!checkSocketRateLimit(client.id, 'getMessages', 20, 60000)) {
+        client.emit("error", { message: "Terlalu sering request pesan" })
+        return
+      }
+
       const chats = await Chat.find().sort({ timestamp: 1 })
       client.emit("allMessages", chats)
     } catch (error) {
@@ -214,6 +288,12 @@ io.on("connection", client => {
   // Get online users
   client.on("getOnlineUsers", () => {
     try {
+      // Rate limit: max 20 getOnlineUsers per minute
+      if (!checkSocketRateLimit(client.id, 'getOnlineUsers', 20, 60000)) {
+        client.emit("error", { message: "Terlalu sering request user online" })
+        return
+      }
+
       const users = Array.from(onlineUsers.values())
       client.emit("onlineUsersList", users)
     } catch (error) {
@@ -226,6 +306,10 @@ io.on("connection", client => {
     if (user) {
       onlineUsers.delete(client.id)
       
+      // Bersihkan rate limit data saat disconnect
+      const keys = Array.from(socketRateLimits.keys()).filter(k => k.startsWith(client.id))
+      keys.forEach(key => socketRateLimits.delete(key))
+      
       io.emit("userStatusUpdate", {
         type: "offline",
         user: user
@@ -236,8 +320,8 @@ io.on("connection", client => {
   })
 })
 
-app.post("/result", createUser)
+app.post("/result", authLimiter, createUser)
 app.get("/api", getAllUsers)
-app.post("/login", loginCheck)
+app.post("/login", authLimiter, loginCheck)
 
 server.listen(port, () => console.log(`listening on port :${port} [${nodeEnv}]`))
