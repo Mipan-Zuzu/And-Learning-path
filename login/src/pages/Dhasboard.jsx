@@ -29,7 +29,7 @@ import {
 } from "react-icons/bs";
 import { IoMdSettings } from "react-icons/io";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "https://and-api-ten.vercel.app";
 
 function Dhasboard() {
   const [socket, setSocket] = useState(null);
