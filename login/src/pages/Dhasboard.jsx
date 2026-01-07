@@ -29,7 +29,7 @@ import {
 } from "react-icons/bs";
 import { IoMdSettings } from "react-icons/io";
 
-const API_URL = "https://and-api-ten.vercel.app";
+const API_URL = "http://localhost:5000";
 
 function Dhasboard() {
   const [socket, setSocket] = useState(null);
@@ -380,13 +380,12 @@ function Dhasboard() {
             })
           )}
         </div>
-
         <div
-          className={`px-30 py-20 absolute bottom-0 mb-20 ml-3 rounded-lg ${sendFile}`}
+          className={`px-30 py-20 absolute bottom-0 mb-20 ml-3 rounded-lg ${sendFile} file-show`}
           style={{ border: "1px solid #C0C0C0" ,backgroundColor: "#D9D9D9"}}
         >
-          <div className="absolute left-5 -mt-16">
-            <button className="flex gap-3 w-50 hover:bg-gray-200 p-2 rounded-sm cursor-pointer">
+          <div className="absolute left-5 -mt-16 mb">
+            <button className="flex gap-3 w-50 hover:bg-gray-200 p-2 rounded-sm cursor-pointer ">
               <p className="">
               <IoImages size={25} />
             </p>
@@ -438,7 +437,7 @@ function Dhasboard() {
                 <MdOutlineEmojiEmotions size={26} />
               </button>
               {showPicker && (
-                <div className="absolute bottom-10 left-0 z-50">
+                <div className="absolute bottom-20 -left-12 z-50">
                   <EmojiPicker
                     onEmojiClick={(emojiObject) => {
                       setNewMessage((prev) => prev + emojiObject.emoji);
@@ -460,6 +459,7 @@ function Dhasboard() {
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="# Send Message"
+              autoFocus
               className="px-4 w-lg py-2 border rounded-xl font-semibold text-gray-900 text-sm outline-none focus:border-gray-500 transition input-message"
             />
             <button
