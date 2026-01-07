@@ -314,6 +314,11 @@
     margin-left: -10%;
   }
   .file-show {
-    margin-bottom: env(safe-area-inset-bottom);
+  margin-bottom: 20%;
   }
+  @supports (-webkit-touch-callout: none) {
+  .file-show {
+    margin-bottom: calc(env(safe-area-inset-bottom) + 8px);
+  }
+}
 }
