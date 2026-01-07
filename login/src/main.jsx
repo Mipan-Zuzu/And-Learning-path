@@ -36,10 +36,13 @@ const router = createBrowserRouter([
     </ProtectedRoute>
   ),
   },
-
   {
     path : "/dashboard",
     element : <Dashboard />
+  },
+  {
+    path : "/settings",
+    element : ""
   }
 
 

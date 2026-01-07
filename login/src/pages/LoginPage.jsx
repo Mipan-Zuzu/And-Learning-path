@@ -27,7 +27,7 @@ const LoginPage = () => {
     }
 
     const checkLogin = async () => {
-      const res = await fetch(`https://and-api-ten.vercel.app/login`, {
+      const res = await fetch(`http://localhost:5000/login`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

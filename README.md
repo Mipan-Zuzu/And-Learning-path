@@ -235,23 +235,6 @@ npm install dotenv
 
 ---
 
-##  File Structure untuk Production
-
-Pastikan files ini ada dan ter-config dengan benar:
-
-```
-api/.env              ❌ Don't commit (gitignore)
-api/vercel.json       ✅ Untuk deployment config
-api/package.json      ✅ Dependencies list
-
-login/.env            ❌ Don't commit (gitignore)
-login/vercel.json     ✅ Frontend routing config
-login/vite.config.js  ✅ Build config
-login/package.json    ✅ Dependencies list
-```
-
----
-
 ## Continuous Updates
 
 Untuk update production setelah perubahan code:
