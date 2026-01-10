@@ -1,13 +1,14 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = "https://fixed-ant-ands-9cc7ffdd.koyeb.app";
+const PUB_API = import.meta.env.VITE_API_PUB
+const LOC_API = import.meta.env.VITE_API_LOC
 
 export default function ProtectedRoute({ children }) {
     const navigate = useNavigate()
     useEffect(() => {
         const testing = async () => {
-        const res = await fetch(`${API_URL}/check-session`,{
+        const res = await fetch(`${LOC_API}/check-session`,{
             method: "GET",
         credentials: "include"
         })

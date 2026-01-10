@@ -3,9 +3,14 @@ import Title from "../components/Title"
 import Button from "../components/Button"
 import { useRef, useState} from "react"
 import validator from 'validator';
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 const RegisterPage = () => {
+
+    const navigate = useNavigate()
+
+    const PUB_API = import.meta.env.VITE_API_PUB
+    const LOC_API = import.meta.env.VITE_API_LOC
 
     const inputEmail =  useRef(null)
     const inputPassword = useRef(null)
@@ -32,7 +37,7 @@ const RegisterPage = () => {
 
 
         const sendApi = () => {
-            fetch(`https://fixed-ant-ands-9cc7ffdd.koyeb.app/result`, {
+            fetch(`${LOC_API}/result`, {
             method : "POST",
             headers : {"Content-Type": "application/json"},
             body : JSON.stringify({ Email: Email ,Password : Password})
@@ -44,7 +49,7 @@ const RegisterPage = () => {
         if(validator.isEmail(Email) === true && Password !== "") {
             console.log({message : "login berhasil terkirim"})
             sendApi()
-            window.location.href = "/"
+            navigate("/")
         }
     }
 

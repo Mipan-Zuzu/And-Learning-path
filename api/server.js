@@ -8,6 +8,8 @@ const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 
 dotenv.config();
+const local_frontend = "http://localhost:5173"
+const pub_frontend = "https://and-navy.vercel.app"
 
 const dbUser = process.env.DB_USERNAME;
 const dbPass = process.env.DB_PASSWORD;
@@ -18,7 +20,7 @@ let token;
 const app = express();
 const port = process.env.PORT || 5000;
 const nodeEnv = process.env.NODE_ENV || "development";
-const frontendUrl = "https://and-navy.vercel.app";
+const frontendUrl = local_frontend;
 
 app.use(
   cors({
@@ -33,7 +35,7 @@ app.use(cookieParser());
 
 // Rate limiting configuration
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 5 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: "Terlalu banyak request dari IP ini, coba lagi nanti",
   standardHeaders: true,
@@ -136,8 +138,8 @@ const loginCheck = async (req, res) => {
 
     res.cookie(acctoken, newToken, {
       httpOnly: true,
-      secure: true, // WAJIB HTTPS
-      sameSite: "none", // WAJIB cross-site
+      secure: true, 
+      sameSite: "none",
       maxAge: 5 * 60 * 1000,
     })
       .status(200)
@@ -210,7 +212,7 @@ const { Server } = require("socket.io");
 
 const io = new Server(server, {
   cors: {
-    origin: "https://and-navy.vercel.app",
+    origin: local_frontend,
     credentials: true,
   },
 });
@@ -246,8 +248,7 @@ io.on("connection", (client) => {
 
   client.on("userOnline", (userData) => {
     try {
-      // Rate limit: max 5 userOnline events per 10 seconds
-      if (!checkSocketRateLimit(client.id, "userOnline", 5, 10000)) {
+      if (!checkSocketRateLimit(client.id, "userOnline", 10, 10000)) {
         client.emit("error", {
           message: "Terlalu sering mengirim request userOnline",
         });
@@ -270,7 +271,6 @@ io.on("connection", (client) => {
 
   client.on("sendMessage", async (data) => {
     try {
-      // Rate limit: max 10 messages per 30 seconds (prevent spam)
       if (!checkSocketRateLimit(client.id, "sendMessage", 10, 30000)) {
         client.emit("error", {
           message: "Terlalu sering mengirim pesan, tunggu beberapa saat",
@@ -299,7 +299,6 @@ io.on("connection", (client) => {
 
   client.on("getMessages", async () => {
     try {
-      // Rate limit: max 20 getMessages per minute
       if (!checkSocketRateLimit(client.id, "getMessages", 20, 60000)) {
         client.emit("error", { message: "Terlalu sering request pesan" });
         return;
@@ -312,10 +311,8 @@ io.on("connection", (client) => {
     }
   });
 
-  // Get online users
   client.on("getOnlineUsers", () => {
     try {
-      // Rate limit: max 20 getOnlineUsers per minute
       if (!checkSocketRateLimit(client.id, "getOnlineUsers", 20, 60000)) {
         client.emit("error", { message: "Terlalu sering request user online" });
         return;
@@ -333,7 +330,6 @@ io.on("connection", (client) => {
     if (user) {
       onlineUsers.delete(client.id);
 
-      // Bersihkan rate limit data saat disconnect
       const keys = Array.from(socketRateLimits.keys()).filter((k) =>
         k.startsWith(client.id)
       );

@@ -28,8 +28,13 @@ import {
   BsLayoutSidebarInset,
 } from "react-icons/bs";
 import { IoMdSettings } from "react-icons/io";
+const PUB_API = import.meta.env.VITE_API_PUB
+const LOC_API = import.meta.env.VITE_API_LOC
 
-const API_URL = "https://fixed-ant-ands-9cc7ffdd.koyeb.app/";
+
+
+
+const API_URL = LOC_API;
 
 function Dhasboard() {
   const [socket, setSocket] = useState(null);
