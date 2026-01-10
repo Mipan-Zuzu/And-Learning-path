@@ -3,6 +3,7 @@ import Title from "../components/Title"
 import Button from "../components/Button"
 import { useRef, useState} from "react"
 import validator from 'validator';
+import { Link } from "react-router-dom";
 
 const RegisterPage = () => {
 
@@ -43,7 +44,7 @@ const RegisterPage = () => {
         if(validator.isEmail(Email) === true && Password !== "") {
             console.log({message : "login berhasil terkirim"})
             sendApi()
-            window.location.href = "/login"
+            window.location.href = "/"
         }
     }
 
@@ -67,7 +68,7 @@ const RegisterPage = () => {
                 </div>
                 <Button type="button" size={"p-2 border w-64"} onClick={sesionLogin}>Login</Button>
                   <div className="mb-2">  
-        <h2>have an account <a className="text-blue-500 border-b border-blue-500" href="/login">login</a></h2>
+        <h2>have an account <Link className="text-blue-500 border-b border-blue-500" to="/">login</Link></h2>
       </div>
             </form>
         </>

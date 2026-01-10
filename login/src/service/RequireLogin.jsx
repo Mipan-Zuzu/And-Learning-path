@@ -13,9 +13,9 @@ export default function ProtectedRoute({ children }) {
         })
         const data = await res.json()
         if(data.login === "") {
-            navigate("/login")
+            navigate("/")
         }
-        data.login === false ? navigate("/login") : console.log({ message : "berhasil terverifikasi"})
+        data.login === false ? navigate("/") : console.log({ message : "berhasil terverifikasi"})
     }
     testing()
     })

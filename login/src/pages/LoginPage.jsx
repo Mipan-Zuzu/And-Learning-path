@@ -3,6 +3,7 @@ import Label from "../components/Label";
 import Title from "../components/Title";
 import { useRef, useState } from "react";
 import validator from "validator";
+import {Link} from "react-router-dom"
 
 const LoginPage = () => {
   const inputEmail = useRef();
@@ -83,7 +84,7 @@ const LoginPage = () => {
         Login
       </Button>
       <div className="mb-2">  
-        <h2>dont have any account <a className="text-blue-500 border-b border-blue-500" href="/register">resgiter</a></h2>
+        <h2>dont have any account <Link className="text-blue-500 border-b border-blue-500" to="/register">resgiter</Link></h2>
       </div>
       <h2 className="mt-2 text-center text-red-500">{checkRes}</h2>
       <div className="mt-2 text-center">
