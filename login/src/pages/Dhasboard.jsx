@@ -34,7 +34,7 @@ const LOC_API = import.meta.env.VITE_API_LOC
 
 
 
-const API_URL = PUB_API;
+const API_URL = "https://fixed-ant-ands-9cc7ffdd.koyeb.app";
 
 function Dhasboard() {
   const [socket, setSocket] = useState(null);
