@@ -13,19 +13,14 @@ import Dashboard from "./pages/Dhasboard";
 const router = createBrowserRouter([
 
   {
-    path : "/",
-    element : <h1>Welcome to landing page</h1>,
-    errorElement: <ErrorPages />
-  },
-
-  {
     path : "/register",
     element : <RegisterPage/>,
   },
 
   {
-    path : "/login",
+    path : "/",
     element : <LoginPage />,
+    errorElement : <ErrorPages />
   },
 
   {

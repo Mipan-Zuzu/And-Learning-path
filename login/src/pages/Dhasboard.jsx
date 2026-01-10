@@ -29,7 +29,7 @@ import {
 } from "react-icons/bs";
 import { IoMdSettings } from "react-icons/io";
 
-const API_URL = "https://and-api-ten.vercel.app";
+const API_URL = "http://localhost:5000";
 
 function Dhasboard() {
   const [socket, setSocket] = useState(null);
@@ -381,7 +381,7 @@ function Dhasboard() {
           )}
         </div>
         <div
-          className={`px-30 py-20 absolute bottom-0 ml-3 rounded-lg ${sendFile} file-show`}
+          className={`px-30 py-20 max-w-16 absolute mb-22 bottom-0 ml-3 rounded-lg ${sendFile} file-show`}
           style={{ border: "1px solid #C0C0C0" ,backgroundColor: "#D9D9D9"}}
         >
           <div className="absolute left-5 -mt-16 mb">
