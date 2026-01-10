@@ -33,7 +33,7 @@ const LoginPage = () => {
     }
     
     const checkLogin = async () => {
-      const res = await fetch(`${LOC_API}/login`, {
+      const res = await fetch(`${PUB_API}/login`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

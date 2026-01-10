@@ -37,7 +37,7 @@ const RegisterPage = () => {
 
 
         const sendApi = () => {
-            fetch(`${LOC_API}/result`, {
+            fetch(`${PUB_API}/result`, {
             method : "POST",
             headers : {"Content-Type": "application/json"},
             body : JSON.stringify({ Email: Email ,Password : Password})

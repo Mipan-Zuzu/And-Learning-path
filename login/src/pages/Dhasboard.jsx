@@ -34,7 +34,7 @@ const LOC_API = import.meta.env.VITE_API_LOC
 
 
 
-const API_URL = LOC_API;
+const API_URL = PUB_API;
 
 function Dhasboard() {
   const [socket, setSocket] = useState(null);

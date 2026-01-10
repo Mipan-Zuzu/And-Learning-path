@@ -20,7 +20,7 @@ let token;
 const app = express();
 const port = process.env.PORT || 5000;
 const nodeEnv = process.env.NODE_ENV || "development";
-const frontendUrl = local_frontend;
+const frontendUrl = pub_frontend;
 
 app.use(
   cors({
@@ -212,7 +212,7 @@ const { Server } = require("socket.io");
 
 const io = new Server(server, {
   cors: {
-    origin: local_frontend,
+    origin: pub_frontend,
     credentials: true,
   },
 });
