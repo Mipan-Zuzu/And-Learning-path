@@ -1,354 +1,227 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { default: mongoose } = require("mongoose");
-const { User, Chat } = require("./model/model");
-const dotenv = require("dotenv");
-const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 const rateLimit = require("express-rate-limit");
+const http = require("http");
+const { Server } = require("socket.io");
 
-dotenv.config();
-const local_frontend = "http://localhost:5173"
-const pub_frontend = "https://and-navy.vercel.app"
+const { User, Chat } = require("./model/model");
 
 const dbUser = process.env.DB_USERNAME;
 const dbPass = process.env.DB_PASSWORD;
-const secretkey = process.env.AUTH_KEY;
-const acctoken = process.env.ACC_TOKEN;
-let token;
+const secretkey = process.env.AUTH_KEY; 
+const acctoken = process.env.ACC_TOKEN || "tokens";
+
+const local_frontend = "http://localhost:5173";
+const pub_frontend = "https://and-navy.vercel.app";
+
+const nodeEnv = process.env.NODE_ENV || "development";
+const frontendUrl = nodeEnv === "development" ? local_frontend : pub_frontend;
 
 const app = express();
-const port = process.env.PORT || 5000;
-const nodeEnv = process.env.NODE_ENV || "development";
-const frontendUrl = pub_frontend;
+const server = http.createServer(app);
+
 
 app.use(
   cors({
-    origin: frontendUrl.split(",").map((url) => url.trim()),
+    origin: frontendUrl,
     credentials: true,
   })
 );
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
-
 app.use(cookieParser());
 
-// Rate limiting configuration
 const generalLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 5 * 60 * 1000,
+  max: 100,
   message: "Terlalu banyak request dari IP ini, coba lagi nanti",
-  standardHeaders: true,
-  legacyHeaders: false,
 });
-
-// Stricter rate limit untuk login dan register
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 attempts per windowMs
-  skipSuccessfulRequests: true, // don't count successful requests
-  message: "Terlalu banyak percobaan login/register, coba lagi dalam 15 menit",
-  standardHeaders: true,
-  legacyHeaders: false,
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  skipSuccessfulRequests: true,
+  message: "Terlalu banyak percobaan login/register",
 });
-
-// Rate limit untuk POST requests
-const postLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 10, // limit each IP to 10 POST requests per minute
-  message: "Terlalu banyak request, tunggu beberapa saat",
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Apply general rate limiter to all routes
 app.use(generalLimiter);
 
-app.get("/", (req, res) => {
-  res.send("home");
-});
-
 mongoose
-  .connect(
-    `mongodb+srv://${dbUser}:${dbPass}@cluster0.kvl3gwe.mongodb.net/people`
-  )
-  .then(() => console.log("connected to mongodb"))
-  .catch((err) => console.error("mongodb connection error:", err));
+  .connect(`mongodb+srv://${dbUser}:${dbPass}@cluster0.kvl3gwe.mongodb.net/people`)
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((err) => console.error("MongoDB connection error:", err));
 
-const createUser = async (req, res) => {
+
+app.get("/", (req, res) => res.send("Home"));
+
+app.post("/result", authLimiter, async (req, res) => {
   try {
-    console.log("createUser request body:", req.body);
     const { Email, Password } = req.body;
-    if (!Email || !Password) {
-      return res
-        .status(400)
-        .json({ message: "Email dan Password kosong silakan isi dahulu" });
-    }
+    if (!Email || !Password)
+      return res.status(400).json({ message: "Email dan Password harus diisi" });
 
     const newUser = new User({ Email, Password });
     const savedUser = await newUser.save();
 
-    console.log("user saved:", savedUser._id);
-
-    return res
-      .status(201)
-      .json({ message: "berhasil di tambahkan", user: savedUser });
+    res.status(201).json({ message: "User berhasil ditambahkan", user: savedUser });
   } catch (error) {
     console.error("createUser error:", error);
-    return res
-      .status(500)
-      .json({ message: "gagal di tambahkan", error: error.message });
+    res.status(500).json({ message: "Gagal menambahkan user", error: error.message });
   }
-};
+});
 
-const getAllUsers = async (req, res) => {
+app.get("/api", async (req, res) => {
   try {
     const users = await User.find();
-    return res.json(users);
+    res.json(users);
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: "gagal mengambil data" });
+    res.status(500).json({ message: "Gagal mengambil data" });
   }
-};
+});
 
-const loginCheck = async (req, res) => {
+app.post("/login", authLimiter, async (req, res) => {
   try {
     const { Email, Password } = req.body;
-
-    if (!Email || !Password) {
-      return res
-        .status(400)
-        .json({
-          login: false,
-          message: "Email dan Password kosong silakan isi dahulu",
-        });
-    }
-
-    console.log("login attempt:", { Email });
+    if (!Email || !Password)
+      return res.status(400).json({ login: false, message: "Email dan Password harus diisi" });
 
     const user = await User.findOne({ Email, Password });
-    if (!user) {
-      return res
-        .status(401)
-        .json({ login: false, message: "Email atau password salah" });
-    }
+    if (!user) return res.status(401).json({ login: false, message: "Email atau password salah" });
 
     const payload = { id: user._id };
     const newToken = jwt.sign(payload, secretkey, { expiresIn: "5m" });
 
     res.cookie(acctoken, newToken, {
       httpOnly: true,
-      secure: true, 
+      secure: true,
       sameSite: "none",
       maxAge: 5 * 60 * 1000,
-    })
-      .status(200)
-      .json({ login: true, message: "login berhasil" });
+    }).status(200).json({ login: true, message: "Login berhasil" });
   } catch (error) {
     console.error("loginCheck error:", error);
-    return res
-      .status(500)
-      .json({
-        login: false,
-        message: "internal server error",
-        error: error.message,
-      });
+    res.status(500).json({ login: false, message: "Internal server error", error: error.message });
   }
-};
-
+});
 
 app.get("/logout", (req, res) => {
-  res.clearCookie("tokens", { path: "/" });
-  res.json({ message: "cookie cleared" });
+  res.clearCookie(acctoken, { path: "/" });
+  res.json({ message: "Cookie cleared" });
 });
 
 app.get("/check-session", (req, res) => {
   try {
-    const cookieName = process.env.VAL_ACC || acctoken || "access_token";
-    console.log(
-      "/check-session cookies:",
-      req.cookies,
-      "using cookieName:",
-      cookieName
-    );
+    const token = req.cookies[acctoken];
+    if (!token) return res.status(200).json({ login: false });
 
-    const data = req.cookies[cookieName];
-    if (!data) return res.status(200).json({ login: false });
-
-    try {
-      const decode = jwt.verify(data, process.env.AUTH_KEY);
-      return res.status(200).json({ login: true, user: decode });
-    } catch (err) {
-      console.error("JWT verify error in /check-session:", err);
-      return res.status(200).json({ login: false });
-    }
-  } catch (error) {
-    console.error("check-session unexpected error:", error);
-    return res
-      .status(500)
-      .json({
-        login: false,
-        message: "internal server error",
-        error: error.message,
-      });
+    const decoded = jwt.verify(token, secretkey);
+    return res.status(200).json({ login: true, user: decoded });
+  } catch (err) {
+    console.error("JWT verify error in /check-session:", err);
+    return res.status(200).json({ login: false });
   }
 });
 
-app.delete("/chatDirect/:id", async (req, res) => {
-  const findChat = await Chat.findByIdAndDelete(req.params.id, req.body, {
-    new: true,
-    ValidityState: true,
-  });
-  console.log(findChat);
-  res.json(findChat);
-  findChat();
-});
-
-// todo : socket
-// todo : socket
-const http = require("http");
-const server = http.createServer(app);
-const { Server } = require("socket.io");
-
 const io = new Server(server, {
-  cors: {
-    origin: pub_frontend,
-    credentials: true,
-  },
+  cors: { origin: frontendUrl, credentials: true },
 });
 
 const onlineUsers = new Map();
-
-// Rate limit tracker untuk socket events
 const socketRateLimits = new Map();
 
 const checkSocketRateLimit = (clientId, action, limit = 5, window = 10000) => {
   const key = `${clientId}:${action}`;
   const now = Date.now();
-
   if (!socketRateLimits.has(key)) {
     socketRateLimits.set(key, [now]);
     return true;
   }
-
   const timestamps = socketRateLimits.get(key);
-  const recentTimestamps = timestamps.filter((t) => now - t < window);
-
-  if (recentTimestamps.length < limit) {
-    recentTimestamps.push(now);
-    socketRateLimits.set(key, recentTimestamps);
+  const recent = timestamps.filter((t) => now - t < window);
+  if (recent.length < limit) {
+    recent.push(now);
+    socketRateLimits.set(key, recent);
     return true;
   }
-
   return false;
 };
 
 io.on("connection", (client) => {
-  console.log("Client connected");
+  console.log("Client connected:", client.id);
 
   client.on("userOnline", (userData) => {
-    try {
-      if (!checkSocketRateLimit(client.id, "userOnline", 10, 10000)) {
-        client.emit("error", {
-          message: "Terlalu sering mengirim request userOnline",
-        });
-        return;
-      }
-
-      const { nama, profesi, profileImage } = userData;
-      onlineUsers.set(client.id, { nama, profesi, profileImage });
-
-      io.emit("userStatusUpdate", {
-        type: "online",
-        user: { nama, profesi, profileImage },
-      });
-
-      console.log("User online:", nama, "Total:", onlineUsers.size);
-    } catch (error) {
-      console.error("Error user online:", error);
+    if (!checkSocketRateLimit(client.id, "userOnline", 10, 10000)) {
+      client.emit("error", { message: "Terlalu sering mengirim request userOnline" });
+      return;
     }
+    onlineUsers.set(client.id, userData);
+    io.emit("userStatusUpdate", { type: "online", user: userData });
   });
 
   client.on("sendMessage", async (data) => {
     try {
       if (!checkSocketRateLimit(client.id, "sendMessage", 10, 30000)) {
-        client.emit("error", {
-          message: "Terlalu sering mengirim pesan, tunggu beberapa saat",
-        });
+        client.emit("error", { message: "Terlalu sering mengirim pesan" });
         return;
       }
 
-      const { nama, profesi, pesan, profileImage } = data;
+      const cookieHeader = client.handshake.headers.cookie || "";
+      const tokenCookie = cookieHeader.split("; ").find((c) => c.startsWith(`${acctoken}=`));
+      if (!tokenCookie) return client.emit("error", { message: "User not authenticated" });
+      const token = tokenCookie.split("=")[1];
 
-      const newChat = new Chat({ nama, profesi, pesan, profileImage });
+      let decoded;
+      try {
+        decoded = jwt.verify(token, secretkey);
+      } catch (err) {
+        return client.emit("error", { message: "Invalid token" });
+      }
+
+      const { pesan, nama, profesi, profileImage } = data;
+      const newChat = new Chat({ userId: decoded.id, pesan, nama, profesi, profileImage });
       await newChat.save();
 
-      io.emit("receiveMessage", {
-        nama,
-        profesi,
-        pesan,
-        profileImage,
-        timestamp: new Date(),
-      });
-
-      console.log("Chat saved:", { nama, profesi, pesan });
+      io.emit("receiveMessage", { userId: decoded.id, pesan, nama, profesi, profileImage, timestamp: new Date() });
     } catch (error) {
       console.error("Error saving chat:", error);
+      client.emit("error", { message: "Gagal menyimpan chat" });
     }
   });
 
   client.on("getMessages", async () => {
-    try {
-      if (!checkSocketRateLimit(client.id, "getMessages", 20, 60000)) {
-        client.emit("error", { message: "Terlalu sering request pesan" });
-        return;
-      }
-
-      const chats = await Chat.find().sort({ timestamp: 1 });
-      client.emit("allMessages", chats);
-    } catch (error) {
-      console.error("Error fetching chats:", error);
-    }
+    if (!checkSocketRateLimit(client.id, "getMessages", 20, 60000)) return;
+    const chats = await Chat.find().sort({ timestamp: 1 });
+    client.emit("allMessages", chats);
   });
 
   client.on("getOnlineUsers", () => {
-    try {
-      if (!checkSocketRateLimit(client.id, "getOnlineUsers", 20, 60000)) {
-        client.emit("error", { message: "Terlalu sering request user online" });
-        return;
-      }
-
-      const users = Array.from(onlineUsers.values());
-      client.emit("onlineUsersList", users);
-    } catch (error) {
-      console.error("Error fetching online users:", error);
-    }
+    if (!checkSocketRateLimit(client.id, "getOnlineUsers", 20, 60000)) return;
+    const users = Array.from(onlineUsers.values());
+    client.emit("onlineUsersList", users);
   });
 
   client.on("disconnect", () => {
     const user = onlineUsers.get(client.id);
     if (user) {
       onlineUsers.delete(client.id);
-
-      const keys = Array.from(socketRateLimits.keys()).filter((k) =>
-        k.startsWith(client.id)
-      );
-      keys.forEach((key) => socketRateLimits.delete(key));
-
-      io.emit("userStatusUpdate", {
-        type: "offline",
-        user: user,
-      });
-
-      console.log("User offline:", user.nama, "Total:", onlineUsers.size);
+      const keys = Array.from(socketRateLimits.keys()).filter((k) => k.startsWith(client.id));
+      keys.forEach((k) => socketRateLimits.delete(k));
+      io.emit("userStatusUpdate", { type: "offline", user });
     }
   });
 });
 
-app.post("/result", authLimiter, createUser);
-app.get("/api", getAllUsers);
-app.post("/login", authLimiter, loginCheck);
+app.delete("/chatDirect/:id", async (req, res) => {
+  try {
+    const deleted = await Chat.findByIdAndDelete(req.params.id);
+    res.json(deleted);
+  } catch (err) {
+    res.status(500).json({ message: "Gagal hapus chat", error: err.message });
+  }
+});
 
-server.listen(port, () =>
-  console.log(`listening on port :${port} [${nodeEnv}]`)
-);
+const port = process.env.PORT || 5000;
+server.listen(port, () => console.log(`Server running on port ${port} [${nodeEnv}]`));
