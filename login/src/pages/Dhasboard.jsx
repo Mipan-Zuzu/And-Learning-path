@@ -34,7 +34,7 @@ const LOC_API = import.meta.env.VITE_API_LOC
 
 
 
-const API_URL = PUB_API;
+const API_URL = "https://and-api-ten.vercel.app";
 
 function Dhasboard() {
   const [socket, setSocket] = useState(null);
@@ -70,11 +70,7 @@ function Dhasboard() {
     setEditImage(storedImage);
 
     // Connect ke server
-    const newSocket = io(API_URL, {
-  withCredentials: true,
-});
-
-
+    const newSocket = io(API_URL);
     setSocket(newSocket);
 
     // User masuk

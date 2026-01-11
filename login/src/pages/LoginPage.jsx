@@ -3,16 +3,17 @@ import Label from "../components/Label";
 import Title from "../components/Title";
 import { useRef, useState } from "react";
 import validator from "validator";
-import { Link, useNavigate } from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom"
 
 const LoginPage = () => {
+  
   const navigate = useNavigate();
-  const PUB_API = import.meta.env.VITE_API_PUB;
-  const LOC_API = import.meta.env.VITE_API_LOC;
-
+  const PUB_API = import.meta.env.VITE_API_PUB
+  const LOC_API = import.meta.env.VITE_API_LOC
+  
   const inputEmail = useRef();
   const inputPassword = useRef();
-
+  
   const [checkEmail, setCheckEmail] = useState();
   const [checkPassword, setCheckPassword] = useState();
   const [checkVal, setCheckVal] = useState();
@@ -23,39 +24,36 @@ const LoginPage = () => {
     setCheckPassword(null);
     setCheckVal(null);
     setCheckRes(null);
-
+    
     const Email = inputEmail.current.value;
     const Password = inputPassword.current.value;
     if (!Email && !Password) {
       setCheckVal("password dan Email harus di isi");
-      return;
+      return
     }
-
+    
     const checkLogin = async () => {
-      const res = await fetch(
-        `${PUB_API}/login`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            Email: Email,
-            Password: Password,
-          }),
-        }
-      );
+      const res = await fetch(`https://fixed-ant-ands-9cc7ffdd.koyeb.app/login`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          Email: Email,
+          Password: Password,
+        }),
+      })
       const data = await res.json();
       if (data.login === false) {
         setCheckRes(data.message);
-        console.log(data.login);
+        console.log(data.login)
         return;
       }
 
       if (data.login === true) {
-        localStorage.setItem("token", data.token);
-        navigate("/dashboard");
+        console.log(data.login)
+        navigate("/home");
       }
-    };
+    }
 
     validator.isEmail(Email) === true
       ? console.log({ message: "Email valid" })
@@ -90,16 +88,8 @@ const LoginPage = () => {
       <Button type="button" size={"p-2 border w-64"} onClick={sinkronLogin}>
         Login
       </Button>
-      <div className="mb-2">
-        <h2>
-          dont have any account{" "}
-          <Link
-            className="text-blue-500 border-b border-blue-500"
-            to="/register"
-          >
-            resgiter
-          </Link>
-        </h2>
+      <div className="mb-2">  
+        <h2>dont have any account <Link className="text-blue-500 border-b border-blue-500" to="/register">resgiter</Link></h2>
       </div>
       <h2 className="mt-2 text-center text-red-500">{checkRes}</h2>
       <div className="mt-2 text-center">

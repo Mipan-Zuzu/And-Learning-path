@@ -5,16 +5,12 @@ const userSchema = new mongoose.Schema({
   Password: { type:String, required:true },
   username : String,
   age : Number,
-  job : String
+  job : String,
+  chat : String,
+  group : String
 });
 
-
 const chatSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true
-  },
   nama: { type: String, required: true },
   profesi: { type: String, required: true },
   pesan: { type: String, required: true },
@@ -22,27 +18,6 @@ const chatSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
   img: { type: String, default: "" }
 });
-
-const todoSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true
-  },
-  title: {
-    type: String,
-    required: true
-  },
-  completed: {
-    type: Boolean,
-    default: false
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
 
 const groupSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -53,7 +28,6 @@ const groupSchema = new mongoose.Schema({
 module.exports = {
   User: mongoose.model("User", userSchema),
   Chat: mongoose.model("Chat", chatSchema),
-  Todo: mongoose.model("Todo", todoSchema),
   Group: mongoose.model("Group", groupSchema)
 };
 
