@@ -130,13 +130,12 @@ const loginCheck = async (req, res) => {
     const payload = { id: user._id };
     const newToken = jwt.sign(payload, secretkey, { expiresIn: "5m" });
 
-    res
-      .cookie(acctoken, newToken, {
-        httpOnly: true,
-        secure: nodeEnv === "production",
-        sameSite: "lax",
-        maxAge: 5 * 60 * 1000,
-      })
+    res.cookie("token", newToken, {
+  httpOnly: true,
+  secure: true,        // ⬅️ WAJIB karena HTTPS
+  sameSite: "none",    // ⬅️ WAJIB karena beda domain
+  maxAge: 60 * 60 * 1000, // 1 jam
+})
       .status(200)
       .json({ login: true, message: "login berhasil" });
   } catch (error) {
@@ -148,17 +147,20 @@ const loginCheck = async (req, res) => {
 
 
 app.get("/check-session", (req, res) => {
-  try {
-    const token = req.cookies[acctoken];
-    if (!token) return res.status(200).json({ login: false });
+  const token = req.cookies.token;
 
-    const decoded = jwt.verify(token, secretkey);
-    return res.status(200).json({ login: true, user: decoded });
-  } catch (err) {
-    console.error("JWT verify error in /check-session:", err);
-    return res.status(200).json({ login: false });
+  if (!token) {
+    return res.json({ login: false });
+  }
+
+  try {
+    jwt.verify(token, secretkey);
+    return res.json({ login: true });
+  } catch {
+    return res.json({ login: false });
   }
 });
+
 
 
 app.delete("/chatDirect/:id", async (req, res) => {
