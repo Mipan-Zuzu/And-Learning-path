@@ -3,7 +3,6 @@ import Label from "../components/Label";
 import Title from "../components/Title";
 import { useRef, useState } from "react";
 import validator from "validator";
-import {Link} from "react-router-dom"
 
 const LoginPage = () => {
   const inputEmail = useRef();
@@ -28,7 +27,7 @@ const LoginPage = () => {
     }
 
     const checkLogin = async () => {
-      const res = await fetch(`https://fixed-ant-ands-9cc7ffdd.koyeb.app/login`, {
+      const res = await fetch(`https://and-api-ten.vercel.app/login`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -84,7 +83,7 @@ const LoginPage = () => {
         Login
       </Button>
       <div className="mb-2">  
-        <h2>dont have any account <Link className="text-blue-500 border-b border-blue-500" to="/register">resgiter</Link></h2>
+        <h2>dont have any account <a className="text-blue-500 border-b border-blue-500" href="/register">resgiter</a></h2>
       </div>
       <h2 className="mt-2 text-center text-red-500">{checkRes}</h2>
       <div className="mt-2 text-center">

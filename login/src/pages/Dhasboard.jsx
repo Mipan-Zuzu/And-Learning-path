@@ -29,7 +29,7 @@ import {
 } from "react-icons/bs";
 import { IoMdSettings } from "react-icons/io";
 
-const API_URL = "https://fixed-ant-ands-9cc7ffdd.koyeb.app/";
+const API_URL = "https://and-api-ten.vercel.app";
 
 function Dhasboard() {
   const [socket, setSocket] = useState(null);
@@ -252,7 +252,7 @@ function Dhasboard() {
               <p className="mt-3 -ml-5 mr-5">
                 {disturb === "unDisturb" ? (
                   <FiBellOff size={20} className="bell-disturb" />
-                ) : (<FiBell size={20} className="" />)}
+                ) : (<FiBell size={20} className="bell-disturb" />)}
               </p>
                 <div>
                   <p className="text-[10px]">Mode disturb</p>
@@ -381,7 +381,7 @@ function Dhasboard() {
           )}
         </div>
         <div
-          className={`px-30 py-20 max-w-16 absolute mb-22 bottom-0 ml-3 rounded-lg ${sendFile} file-show`}
+          className={`px-30 py-20 absolute bottom-0 mb-20 ml-3 rounded-lg ${sendFile} file-show`}
           style={{ border: "1px solid #C0C0C0" ,backgroundColor: "#D9D9D9"}}
         >
           <div className="absolute left-5 -mt-16 mb">
