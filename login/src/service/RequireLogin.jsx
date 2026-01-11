@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children }) {
   useEffect(() => {
     const testing = async () => {
       const res = await fetch(
-        `https://fixed-ant-ands-9cc7ffdd.koyeb.app/check-session`,
+        `${PUB_API}/check-session`,
         {
           method: "GET",
           credentials: "include",

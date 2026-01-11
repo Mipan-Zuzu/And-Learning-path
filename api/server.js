@@ -6,6 +6,7 @@ const dotenv = require("dotenv");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
+const bcrypt = require("bcryptjs");
 
 dotenv.config();
 const local_frontend = "http://localhost:5173"
@@ -24,7 +25,7 @@ const frontendUrl = "https://and-navy.vercel.app"
 
 app.use(
   cors({
-    origin: frontendUrl.split(",").map((url) => url.trim()),
+    origin: [frontendUrl, local_frontend],
     credentials: true,
   })
 );
@@ -79,20 +80,42 @@ const createUser = async (req, res) => {
   try {
     console.log("createUser request body:", req.body);
     const { Email, Password } = req.body;
+
+    // Validate input
     if (!Email || !Password) {
       return res
         .status(400)
         .json({ message: "Email dan Password kosong silakan isi dahulu" });
     }
 
-    const newUser = new User({ Email, Password });
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(Email)) {
+      return res
+        .status(400)
+        .json({ message: "Format email tidak valid" });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ Email });
+    if (existingUser) {
+      return res
+        .status(409)
+        .json({ message: "Email sudah terdaftar" });
+    }
+
+    // Hash password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(Password, saltRounds);
+
+    const newUser = new User({ Email, Password: hashedPassword });
     const savedUser = await newUser.save();
 
     console.log("user saved:", savedUser._id);
 
     return res
       .status(201)
-      .json({ message: "berhasil di tambahkan", user: savedUser });
+      .json({ message: "berhasil di tambahkan", user: { id: savedUser._id, Email: savedUser.Email } });
   } catch (error) {
     console.error("createUser error:", error);
     return res
@@ -126,8 +149,16 @@ const loginCheck = async (req, res) => {
 
     console.log("login attempt:", { Email });
 
-    const user = await User.findOne({ Email, Password });
+    const user = await User.findOne({ Email });
     if (!user) {
+      return res
+        .status(401)
+        .json({ login: false, message: "Email atau password salah" });
+    }
+
+    // Compare hashed password
+    const isPasswordValid = await bcrypt.compare(Password, user.Password);
+    if (!isPasswordValid) {
       return res
         .status(401)
         .json({ login: false, message: "Email atau password salah" });
@@ -136,9 +167,9 @@ const loginCheck = async (req, res) => {
     const payload = { id: user._id };
     const newToken = jwt.sign(payload, secretkey, { expiresIn: "5m" });
 
-    res.cookie(acctoken, newToken, {
+    res.cookie("access_token", newToken, {
       httpOnly: true,
-      secure: true, 
+      secure: true,
       sameSite: "none",
       maxAge: 5 * 60 * 1000,
     })
@@ -158,7 +189,7 @@ const loginCheck = async (req, res) => {
 
 
 app.get("/logout", (req, res) => {
-  res.clearCookie("tokens", { path: "/" });
+  res.clearCookie("access_token", { path: "/" });
   res.json({ message: "cookie cleared" });
 });
 
@@ -195,13 +226,17 @@ app.get("/check-session", (req, res) => {
 });
 
 app.delete("/chatDirect/:id", async (req, res) => {
-  const findChat = await Chat.findByIdAndDelete(req.params.id, req.body, {
-    new: true,
-    ValidityState: true,
-  });
-  console.log(findChat);
-  res.json(findChat);
-  findChat();
+  try {
+    const deletedChat = await Chat.findByIdAndDelete(req.params.id);
+    if (!deletedChat) {
+      return res.status(404).json({ message: "Chat not found" });
+    }
+    console.log("Chat deleted:", deletedChat);
+    res.json({ message: "Chat deleted successfully", deletedChat });
+  } catch (error) {
+    console.error("Error deleting chat:", error);
+    res.status(500).json({ message: "Error deleting chat", error: error.message });
+  }
 });
 
 // todo : socket
@@ -320,7 +355,7 @@ io.on("connection", (client) => {
         return;
       }
 
-      const chats = await Chat.find().sort({ timestamp: 1 });
+      const chats = await Chat.find().sort({ timestamp: -1 });
       client.emit("allMessages", chats);
     } catch (error) {
       console.error("Error fetching chats:", error);

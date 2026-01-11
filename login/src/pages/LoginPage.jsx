@@ -33,7 +33,7 @@ const LoginPage = () => {
 
     const checkLogin = async () => {
       const res = await fetch(
-        `https://fixed-ant-ands-9cc7ffdd.koyeb.app/login`,
+        `${PUB_API}/login`,
         {
           method: "POST",
           credentials: "include",
@@ -53,7 +53,7 @@ const LoginPage = () => {
 
       if (data.login === true) {
         localStorage.setItem("token", data.token);
-        navigate("/home");
+        navigate("/dashboard");
       }
     };
 
