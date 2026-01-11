@@ -3,14 +3,9 @@ import Title from "../components/Title"
 import Button from "../components/Button"
 import { useRef, useState} from "react"
 import validator from 'validator';
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const RegisterPage = () => {
-
-    const navigate = useNavigate()
-
-    const PUB_API = import.meta.env.VITE_API_PUB
-    const LOC_API = import.meta.env.VITE_API_LOC
 
     const inputEmail =  useRef(null)
     const inputPassword = useRef(null)
@@ -49,7 +44,7 @@ const RegisterPage = () => {
         if(validator.isEmail(Email) === true && Password !== "") {
             console.log({message : "login berhasil terkirim"})
             sendApi()
-            navigate("/")
+            window.location.href = "/"
         }
     }
 

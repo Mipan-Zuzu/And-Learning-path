@@ -8,7 +8,6 @@ import LoginPage from "./pages/LoginPage";
 import Main from "./pages/Main"
 import ProtectedRoute from "./service/RequireLogin"
 import Dashboard from "./pages/Dhasboard";
-import SuccsesLogin from "./pages/SuccsesLogin";
 
 
 const router = createBrowserRouter([
@@ -34,19 +33,11 @@ const router = createBrowserRouter([
   },
   {
     path : "/dashboard",
-    element : (
-    <ProtectedRoute>
-      <Dashboard />
-    </ProtectedRoute>
-  )
+    element : <Dashboard />
   },
   {
-    path : "/profile",
-    element : (
-      <ProtectedRoute>
-        <SuccsesLogin />
-      </ProtectedRoute>
-    )
+    path : "/settings",
+    element : ""
   }
 
 

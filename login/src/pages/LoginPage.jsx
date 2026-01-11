@@ -3,17 +3,12 @@ import Label from "../components/Label";
 import Title from "../components/Title";
 import { useRef, useState } from "react";
 import validator from "validator";
-import {Link, useNavigate} from "react-router-dom"
+import {Link} from "react-router-dom"
 
 const LoginPage = () => {
-  
-  const navigate = useNavigate();
-  const PUB_API = import.meta.env.VITE_API_PUB
-  const LOC_API = import.meta.env.VITE_API_LOC
-  
   const inputEmail = useRef();
   const inputPassword = useRef();
-  
+
   const [checkEmail, setCheckEmail] = useState();
   const [checkPassword, setCheckPassword] = useState();
   const [checkVal, setCheckVal] = useState();
@@ -24,14 +19,14 @@ const LoginPage = () => {
     setCheckPassword(null);
     setCheckVal(null);
     setCheckRes(null);
-    
+
     const Email = inputEmail.current.value;
     const Password = inputPassword.current.value;
     if (!Email && !Password) {
       setCheckVal("password dan Email harus di isi");
       return
     }
-    
+
     const checkLogin = async () => {
       const res = await fetch(`https://fixed-ant-ands-9cc7ffdd.koyeb.app/login`, {
         method: "POST",
@@ -51,7 +46,7 @@ const LoginPage = () => {
 
       if (data.login === true) {
         console.log(data.login)
-        navigate("/home");
+        window.location.href = "/home"
       }
     }
 
@@ -81,7 +76,7 @@ const LoginPage = () => {
 
       <div className="mb-2">
         <Title>Password</Title>
-        <Label placeholder="Password" type="password" ref={inputPassword}>
+        <Label placeholder="Password" type="text" ref={inputPassword}>
           Password
         </Label>
       </div>
