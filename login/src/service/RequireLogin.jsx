@@ -1,42 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function ProtectedRoute({ children }) {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const res = await fetch(
-          "https://fixed-ant-ands-9cc7ffdd.koyeb.app/check-session",
-          {
+    const navigate = useNavigate()
+    useEffect(() => {
+        const testing = async () => {
+        const res = await fetch(`https://fixed-ant-ands-9cc7ffdd.koyeb.app/check-session`,{
             method: "GET",
-            credentials: "include",
-          }
-        );
-
-        if (!res.ok) {
-          navigate("/login");
-          return;
+        credentials: "include"
+        })
+        const data = await res.json()
+        if(data.login === "") {
+            navigate("/login")
         }
+        data.login === false ? navigate("/") : console.log({ message : "berhasil terverifikasi"})
+    }
+    testing()
+    })
 
-        const data = await res.json();
-
-        if (!data.login) {
-          navigate("/login");
-        } else {
-          setLoading(false);
-        }
-      } catch {
-        navigate("/login");
-      }
-    };
-
-    checkSession();
-  }, [navigate]);
-
-  if (loading) return null; // atau loading spinner
-
-  return children;
+    return children;
 }

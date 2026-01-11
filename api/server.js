@@ -154,22 +154,14 @@ app.get("/logout", (req, res) => {
 
 app.get("/check-session", (req, res) => {
   try {
-    const cookieName = process.env.VAL_ACC || acctoken || "access_token";
-    console.log("/check-session cookies:", req.cookies, "using cookieName:", cookieName);
+    const token = req.cookies[acctoken];
+    if (!token) return res.status(200).json({ login: false });
 
-    const data = req.cookies[cookieName];
-    if (!data) return res.status(200).json({ login: false });
-
-    try {
-      const decode = jwt.verify(data, process.env.AUTH_KEY);
-      return res.status(200).json({ login: true, user: decode });
-    } catch (err) {
-      console.error("JWT verify error in /check-session:", err);
-      return res.status(200).json({ login: false });
-    }
-  } catch (error) {
-    console.error("check-session unexpected error:", error);
-    return res.status(500).json({ login: false, message: "internal server error", error: error.message });
+    const decoded = jwt.verify(token, secretkey);
+    return res.status(200).json({ login: true, user: decoded });
+  } catch (err) {
+    console.error("JWT verify error in /check-session:", err);
+    return res.status(200).json({ login: false });
   }
 });
 
