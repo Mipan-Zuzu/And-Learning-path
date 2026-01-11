@@ -8,24 +8,20 @@ import LoginPage from "./pages/LoginPage";
 import Main from "./pages/Main"
 import ProtectedRoute from "./service/RequireLogin"
 import Dashboard from "./pages/Dhasboard";
+import SuccsesLogin from "./pages/SuccsesLogin";
 
 
 const router = createBrowserRouter([
 
   {
     path : "/",
-    element : <h1>Welcome to landing page</h1>,
+    element :  <LoginPage />,
     errorElement: <ErrorPages />
   },
 
   {
     path : "/register",
     element : <RegisterPage/>,
-  },
-
-  {
-    path : "/login",
-    element : <LoginPage />,
   },
 
   {
@@ -38,11 +34,19 @@ const router = createBrowserRouter([
   },
   {
     path : "/dashboard",
-    element : <Dashboard />
+    element : (
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    )
   },
   {
-    path : "/settings",
-    element : ""
+    path : "/profile",
+    element: (
+      <ProtectedRoute>
+        <SuccsesLogin />
+      </ProtectedRoute>
+    )
   }
 
 

@@ -1,6 +1,7 @@
 import { useState} from "react";
 import "@hackernoon/pixel-icon-library/fonts/iconfont.css";
 import Typewriter from "typewriter-effect";
+import { Link } from "react-router-dom";
 
 
 export default function Main () {
@@ -46,7 +47,7 @@ const Backgorund = () => {
         </div>
         <RadioInput pilihProfesi={pilihProfesi} />
       <div className={`mt-5 ml-60 ${profesi === "profesi" ? "opacity-0" : "opacity-100"}`}>
-        <button type="button" onClick={<Componentdefrent />} className="p-1 pl-5 pr-5 bg-[#1B1B1B] text-white cursor-pointer pixels text-sm hover:bg-white hover:border duration-300 hover:text-black ">Select</button>
+        <Link to={"/profile"} className="p-1 pl-5 pr-5 bg-[#1B1B1B] text-white cursor-pointer pixels text-sm hover:bg-white hover:border duration-300 hover:text-black ">Select</Link>
       </div>
       </div>
     </div>

@@ -20,13 +20,13 @@ export default function ProtectedRoute({ children }) {
         const data = await res.json();
 
         if (!data.login) {
-          navigate("/login");
+          navigate("/");
         } else {
           setVerified(true);
         }
       } catch (error) {
         console.error("Session check failed:", error);
-        navigate("/login");
+        navigate("/");
       }
     };
 
