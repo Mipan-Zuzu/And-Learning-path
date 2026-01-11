@@ -145,11 +145,6 @@ const loginCheck = async (req, res) => {
   }
 };
 
-app.get("/logout", (req, res) => {
-  res.clearCookie("tokens", { path: "/" });
-  res.json({ message: "cookie cleared" });
-});
-
 
 
 app.get("/check-session", (req, res) => {

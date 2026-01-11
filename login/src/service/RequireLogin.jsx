@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children }) {
     const testing = async () => {
       try {
         const res = await fetch(
-          "https://fixed-ant-ands-9cc7ffdd.koyeb.app/check-session",
+          `${PUB_API}/check-session`,
           {
             method: "GET",
             credentials: "include",
@@ -23,7 +23,8 @@ export default function ProtectedRoute({ children }) {
         } else {
           setVerified(true);
         }
-      } catch (err) {
+      } catch (error) {
+        console.error("Session check failed:", error);
         navigate("/login");
       }
     };
@@ -31,7 +32,7 @@ export default function ProtectedRoute({ children }) {
     testing();
   }, [navigate]);
 
-  if (!verified) return null; // ⛔ jangan render page dulu
+  if (!verified) return null
 
   return children;
 }
