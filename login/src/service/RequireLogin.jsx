@@ -8,7 +8,7 @@ export default function ProtectedRoute({ children }) {
     const navigate = useNavigate()
     useEffect(() => {
         const testing = async () => {
-        const res = await fetch(`${PUB_API}/check-session`,{
+        const res = await fetch(`https://fixed-ant-ands-9cc7ffdd.koyeb.app/check-session`,{
             method: "GET",
         credentials: "include"
         })

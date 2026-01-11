@@ -33,7 +33,7 @@ const LoginPage = () => {
     }
     
     const checkLogin = async () => {
-      const res = await fetch(`${PUB_API}/login`, {
+      const res = await fetch(`https://fixed-ant-ands-9cc7ffdd.koyeb.app/login`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
