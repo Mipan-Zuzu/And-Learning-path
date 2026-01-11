@@ -70,7 +70,11 @@ function Dhasboard() {
     setEditImage(storedImage);
 
     // Connect ke server
-    const newSocket = io(API_URL);
+    const newSocket = io(API_URL, {
+  withCredentials: true,
+});
+
+
     setSocket(newSocket);
 
     // User masuk

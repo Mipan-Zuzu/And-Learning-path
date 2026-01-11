@@ -243,6 +243,16 @@ const checkSocketRateLimit = (clientId, action, limit = 5, window = 10000) => {
   return false;
 };
 
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) return next(new Error("NO_TOKEN"));
+
+  const decoded = jwt.verify(token, process.env.AUTH_KEY);
+  socket.user = { id: decoded.id };
+  next();
+});
+
+
 io.on("connection", (client) => {
   console.log("Client connected");
 
@@ -270,32 +280,38 @@ io.on("connection", (client) => {
   });
 
   client.on("sendMessage", async (data) => {
-    try {
-      if (!checkSocketRateLimit(client.id, "sendMessage", 10, 30000)) {
-        client.emit("error", {
-          message: "Terlalu sering mengirim pesan, tunggu beberapa saat",
-        });
-        return;
-      }
-
-      const { nama, profesi, pesan, profileImage } = data;
-
-      const newChat = new Chat({ nama, profesi, pesan, profileImage });
-      await newChat.save();
-
-      io.emit("receiveMessage", {
-        nama,
-        profesi,
-        pesan,
-        profileImage,
-        timestamp: new Date(),
-      });
-
-      console.log("Chat saved:", { nama, profesi, pesan });
-    } catch (error) {
-      console.error("Error saving chat:", error);
+  try {
+    if (!client.user?.id) {
+      console.log("USER BELUM LOGIN");
+      return;
     }
-  });
+
+    const { nama, profesi, pesan, profileImage } = data;
+
+    const newChat = new Chat({
+      userId: client.user.id, // ✅ FIX UTAMA
+      nama,
+      profesi,
+      pesan,
+      profileImage,
+    });
+
+    await newChat.save();
+
+    io.emit("receiveMessage", {
+      userId: client.user.id,
+      nama,
+      profesi,
+      pesan,
+      profileImage,
+      timestamp: new Date(),
+    });
+
+  } catch (error) {
+    console.error("Error saving chat:", error);
+  }
+});
+
 
   client.on("getMessages", async () => {
     try {
