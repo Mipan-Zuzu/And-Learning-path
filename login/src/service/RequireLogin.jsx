@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = "https://and-api-ten.vercel.app";
+const API_URL = "https://fixed-ant-ands-9cc7ffdd.koyeb.app";
 
 export default function ProtectedRoute({ children }) {
     const navigate = useNavigate()
