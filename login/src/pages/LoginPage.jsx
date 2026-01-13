@@ -33,7 +33,7 @@ const LoginPage = () => {
     }
     
     const checkLogin = async () => {
-      const res = await fetch(`http://localhost:5000/login`, {
+      const res = await fetch(`https://fixed-ant-ands-9cc7ffdd.koyeb.app`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
