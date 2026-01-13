@@ -37,7 +37,7 @@ const RegisterPage = () => {
 
 
         const sendApi = () => {
-            fetch(`https://fixed-ant-ands-9cc7ffdd.koyeb.app`, {
+            fetch(`https://fixed-ant-ands-9cc7ffdd.koyeb.app/result`, {
             method : "POST",
             headers : {"Content-Type": "application/json"},
             body : JSON.stringify({ Email: Email ,Password : Password})
