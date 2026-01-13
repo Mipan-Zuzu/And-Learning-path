@@ -51,6 +51,7 @@ loginReact/
 #### Step 1.1: Setup Environment Variables di Backend
 
 Buat file `api/.env` berdasarkan `api/.env.example`:
+test
 
 ```bash
 cd api
