@@ -16,7 +16,7 @@ const chatSchema = new mongoose.Schema({
   pesan: { type: String, required: true },
   profileImage: { type: String, default: "" },
   timestamp: { type: Date, default: Date.now },
-  img: { type: String, default: "" }
+  img: { type: String, default: "" },
 });
 
 const groupSchema = new mongoose.Schema({

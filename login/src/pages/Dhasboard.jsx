@@ -29,7 +29,7 @@ import {
 } from "react-icons/bs";
 import { IoMdSettings } from "react-icons/io";
 
-const API_URL = "https://and-api-ten.vercel.app";
+const API_URL = "http://localhost:5000";
 
 function Dhasboard() {
   const [socket, setSocket] = useState(null);
@@ -48,7 +48,8 @@ function Dhasboard() {
 
   const sound = new Audio("/sound/buble.mp3");
 
-
+  const [replayMsg, setReplayMsg] = useState("");
+  const [replayName, setReplayName] = useState("");
 
   const [showPicker, setShowPicker] = useState(false);
 
@@ -64,11 +65,9 @@ function Dhasboard() {
     setEditProfesi(storedProfesi);
     setEditImage(storedImage);
 
-    // Connect ke server
     const newSocket = io(API_URL);
     setSocket(newSocket);
 
-    // User masuk
     newSocket.emit("userOnline", {
       nama: storedNama,
       profesi: storedProfesi,
@@ -77,7 +76,7 @@ function Dhasboard() {
     newSocket.emit("getMessages");
     newSocket.emit("getOnlineUsers");
 
-    // Listen events
+    //* Listen events
     newSocket.on("allMessages", (data) => {
       setMessages(data);
     });
@@ -118,6 +117,19 @@ function Dhasboard() {
     }
   };
 
+  const [imgAplouds, setImgAplouds] = useState()
+
+  const handleimgchat = (e) => {
+    const file = e.target.files[0]
+    if(file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImgAplouds(file)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const handleSaveProfile = () => {
     setNama(editNama);
     setProfesi(editProfesi);
@@ -126,6 +138,7 @@ function Dhasboard() {
     localStorage.setItem("nama", editNama);
     localStorage.setItem("profesi", editProfesi);
     localStorage.setItem("profileImage", editImage);
+    
 
     if (socket) {
       socket.emit("userOnline", {
@@ -139,6 +152,8 @@ function Dhasboard() {
   };
 
   const handleSendMessage = (e) => {
+    setReplayMsg("");
+    setReplayName("");
     e.preventDefault();
     if (newMessage.trim() === "") return;
 
@@ -146,10 +161,16 @@ function Dhasboard() {
       socket.emit("sendMessage", {
         nama,
         profesi,
-        pesan: newMessage,
+        pesan: `${
+          replayMsg === ""
+            ? newMessage
+            : `Replay "${replayMsg.substring(0, 30) + "..."}" | ${newMessage}`
+        }`,
         profileImage,
       });
     }
+
+    console.log(imgAplouds)
 
     setNewMessage("");
   };
@@ -167,9 +188,18 @@ function Dhasboard() {
   console.log(rightside);
   const [leftside, setLeftside] = useState("hidden");
 
-  console.log(disturb)
+  console.log(disturb);
 
-  const [sendFile, setSendFile] = useState("hidden")
+  const [sendFile, setSendFile] = useState("hidden");
+
+  const replayFunc = (messages, nama) => {
+    setReplayName(nama);
+    setReplayMsg(messages);
+  };
+
+  const saveMessage = (data) => {
+    setNewMessage(data);
+  };
 
   return (
     <div
@@ -229,7 +259,7 @@ function Dhasboard() {
             >
               <BsLayoutSidebarInsetReverse size={20} color="gray" />
             </button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm overflow-hidden border-green-600 border-3">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm overflow-hidden border-green-600 border-3">
               {profileImage ? (
                 <img
                   src={profileImage}
@@ -246,24 +276,30 @@ function Dhasboard() {
             </div>
           </div>
           <div
-            className={`absolute px-10 py-2 bg-gray-700 text-gray-200 font-mono rounded-2xl z-20 backdrop:blur-2xl left-[40%] ${disturb === "unDisturb" ? "bell-disturb" : "show-up"} nontification`}
+            className={`absolute px-10 py-2 bg-gray-700 text-gray-200 font-mono rounded-2xl z-20 backdrop:blur-2xl left-[40%] ${
+              disturb === "unDisturb" ? "bell-disturb" : "show-up"
+            } nontification`}
           >
             <div className="flex">
               <p className="mt-3 -ml-5 mr-5">
                 {disturb === "unDisturb" ? (
                   <FiBellOff size={20} className="bell-disturb" />
-                ) : (<FiBell size={20} className="bell-disturb" />)}
+                ) : (
+                  <FiBell size={20} className="bell-disturb" />
+                )}
               </p>
-                <div>
-                  <p className="text-[10px]">Mode disturb</p>
+              <div>
+                <p className="text-[10px]">Mode disturb</p>
                 <p>{disturb === "unDisturb" ? "Actived" : "De Actived"}</p>
-                </div>
+              </div>
             </div>
           </div>
           <div className="flex ml-3">
             <div className="opacity-70 hover:opacity-100 flex">
               <button
-                onClick={() => setdisturb(disturb === "unDisturb" ? "disturb" : "unDisturb")}
+                onClick={() =>
+                  setdisturb(disturb === "unDisturb" ? "disturb" : "unDisturb")
+                }
                 aria-label="toggle-do-not-disturb"
                 className="cursor-pointer"
               >
@@ -309,7 +345,7 @@ function Dhasboard() {
                 <div key={index} className="flex justify-start">
                   <div className="flex gap-2 w-fit max-w-xs md:max-w-md ml-5">
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm overflow-hidden">
                         {msg.profileImage ? (
                           <img
                             src={msg.profileImage}
@@ -324,7 +360,11 @@ function Dhasboard() {
                     <div className="w-fit max-w-xs md:max-w-md">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <strong className="text-gray-900 text-sm">
-                          {isOwnMessage ? <span className="text-cyan-700">{msg.nama}</span> : msg.nama}
+                          {isOwnMessage ? (
+                            <span className="text-cyan-700">{msg.nama}</span>
+                          ) : (
+                            msg.nama
+                          )}
                         </strong>
                         <span className="text-xs text-gray-600 px-2 py-1 rounded-full">
                           {msg.profesi}
@@ -359,16 +399,17 @@ function Dhasboard() {
                           >
                             <FiTrash size={15} />
                           </button>
-                          <button
-                            title="Pin"
-                            onClick={() => setpin(msg.pesan)}
-                          >
+                          <button title="Pin" onClick={() => setpin(msg.pesan)}>
                             <RiPushpinLine size={15} />
                           </button>
                           {!isOwnMessage && (
                             <>
                               <MdBlock title="Block" size={15} />
-                              <IoArrowRedoSharp title="Replay" size={15} />
+                              <button
+                                onClick={() => replayFunc(msg.pesan, msg.nama)}
+                              >
+                                <IoArrowRedoSharp title="Replay" size={15} />
+                              </button>
                             </>
                           )}
                         </div>
@@ -382,26 +423,30 @@ function Dhasboard() {
         </div>
         <div
           className={`px-30 py-20 absolute bottom-0 mb-20 ml-3 rounded-lg ${sendFile} file-show`}
-          style={{ border: "1px solid #C0C0C0" ,backgroundColor: "#D9D9D9"}}
+          style={{ border: "1px solid #C0C0C0", backgroundColor: "#D9D9D9" }}
         >
           <div className="absolute left-5 -mt-16 mb">
-            <button className="flex gap-3 w-50 hover:bg-gray-200 p-2 rounded-sm cursor-pointer ">
+              <label className="flex gap-3 w-50 hover:bg-gray-200 p-2 rounded-sm cursor-pointer">
+                  <IoImages size={25} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleimgchat}
+                    className="hidden"
+                  />
+                  <p className="font-semibold mt-1 text-sm">Uploud picture</p>
+                </label>
+            <button className="flex gap-3 hover:bg-gray-200 p-2 w-50 rounded-sm cursor-pointer">
               <p className="">
-              <IoImages size={25} />
-            </p>
-            <p className="font-semibold mt-1 text-sm">Uploud a Picture</p>
+                <FaSquarePollHorizontal size={25} />
+              </p>
+              <p className="font-semibold mt-1 text-sm">Create Poll</p>
             </button>
-             <button className="flex gap-3 hover:bg-gray-200 p-2 w-50 rounded-sm cursor-pointer">
+            <button className="flex gap-3 w-50 hover:bg-gray-200 p-2 rounded-sm cursor-pointer">
               <p className="">
-              <FaSquarePollHorizontal size={25} />
-            </p>
-            <p className="font-semibold mt-1 text-sm">Create Poll</p>
-            </button>
-             <button className="flex gap-3 w-50 hover:bg-gray-200 p-2 rounded-sm cursor-pointer">
-              <p className="">
-              <TbCapture size={25} />
-            </p>
-            <p className="font-semibold mt-1 text-sm">Open Camera</p>
+                <TbCapture size={25} />
+              </p>
+              <p className="font-semibold mt-1 text-sm">Open Camera</p>
             </button>
           </div>
         </div>
@@ -418,15 +463,15 @@ function Dhasboard() {
               type="button"
               className="w-9 h-9 flex items-center 
               justify-center rounded-full opacity-60 hover:opacity-100 transition cursor-pointer"
-              onClick={() => setSendFile(sendFile === "hidden" ? "block" : "hidden")}
-            >
-              {
-                sendFile === "hidden" ? (
-                  <FiPlus size={25} />
-                ) : (
-                  <FiX size={25} className="rotate" />
-                )
+              onClick={() =>
+                setSendFile(sendFile === "hidden" ? "block" : "hidden")
               }
+            >
+              {sendFile === "hidden" ? (
+                <FiPlus size={25} />
+              ) : (
+                <FiX size={25} className="rotate" />
+              )}
             </button>
             <div className="relative">
               <button
@@ -457,8 +502,10 @@ function Dhasboard() {
               type="text"
               accept="image/*"
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="# Send Message"
+              onChange={(e) => saveMessage(e.target.value)}
+              placeholder={`${
+                replayMsg === "" ? "# Message" : `Replay ${replayName}`
+              }`}
               autoFocus
               className="px-4 w-lg py-2 border rounded-xl font-semibold text-gray-900 text-sm outline-none focus:border-gray-500 transition input-message"
             />
@@ -571,7 +618,7 @@ function Dhasboard() {
 
             <div className="mb-4 flex justify-center">
               <div className="relative">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-2xl overflow-hidden">
+                <div className="w-20 h-20 rounded-full  flex items-center justify-center text-white font-bold text-2xl overflow-hidden">
                   {editImage ? (
                     <img
                       src={editImage}

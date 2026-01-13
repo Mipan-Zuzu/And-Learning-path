@@ -10,7 +10,7 @@ export default function ProtectedRoute({ children }) {
     const testing = async () => {
       try {
         const res = await fetch(
-          `https://fixed-ant-ands-9cc7ffdd.koyeb.app/check-session`,
+          `http://localhost:5000/check-session`,
           {
             method: "GET",
             credentials: "include",

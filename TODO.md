@@ -1,6 +1,6 @@
 # Frontend Login Dashboard Fixes - TODO
 
-## Completed Tasks ✅
+## Completed Tasks 
 
 ### 1. RequireLogin.jsx Authentication Logic
 - [x] Update RequireLogin.jsx to use PUB_API for check-session endpoint

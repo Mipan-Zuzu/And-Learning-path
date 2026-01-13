@@ -19,7 +19,7 @@ let token
 const app = express();
 const port = process.env.PORT || 5000;
 const nodeEnv = process.env.NODE_ENV || 'development';
-const frontendUrl = 'https://and-navy.vercel.app';
+const frontendUrl = 'http://localhost:5173';
 
 app.use(
   cors({
@@ -32,35 +32,31 @@ app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 app.use(cookieParser());
 
-// Rate limiting configuration
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000, 
+  max: 100,
   message: "Terlalu banyak request dari IP ini, coba lagi nanti",
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Stricter rate limit untuk login dan register
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 attempts per windowMs
-  skipSuccessfulRequests: true, // don't count successful requests
+  windowMs: 15 * 60 * 1000, 
+  max: 5, 
+  skipSuccessfulRequests: true, 
   message: "Terlalu banyak percobaan login/register, coba lagi dalam 15 menit",
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Rate limit untuk POST requests
 const postLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 10, // limit each IP to 10 POST requests per minute
+  windowMs: 60 * 1000, 
+  max: 10, 
   message: "Terlalu banyak request, tunggu beberapa saat",
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Apply general rate limiter to all routes
 app.use(generalLimiter);
 
 app.get("/", (req, res) => {
@@ -132,9 +128,9 @@ const loginCheck = async (req, res) => {
 
     res.cookie("token", newToken, {
   httpOnly: true,
-  secure: true,        // ⬅️ WAJIB karena HTTPS
-  sameSite: "none",    // ⬅️ WAJIB karena beda domain
-  maxAge: 60 * 60 * 1000, // 1 jam
+  secure: true,   
+  sameSite: "none",   
+  maxAge: 60 * 60 * 1000, 
 })
       .status(200)
       .json({ login: true, message: "login berhasil" });
@@ -182,14 +178,17 @@ const { Server } = require("socket.io")
 
 const io = new Server(server, {
   cors: {
-    origin: "https://and-navy.vercel.app",
+    origin: "http://localhost:5173",
     credentials: true
-  }
+  },
+  maxHttpBufferSize: 10e6, 
+  pingTimeout: 60000,
+  connectTimeout: 60000
 })
 
 const onlineUsers = new Map()
 
-// Rate limit tracker untuk socket events
+//! Rate limit tracker untuk socket events
 const socketRateLimits = new Map()
 
 const checkSocketRateLimit = (clientId, action, limit = 5, window = 10000) => {
@@ -218,7 +217,6 @@ io.on("connection", client => {
 
   client.on("userOnline", (userData) => {
     try {
-      // Rate limit: max 5 userOnline events per 10 seconds
       if (!checkSocketRateLimit(client.id, 'userOnline', 5, 10000)) {
         client.emit("error", { message: "Terlalu sering mengirim request userOnline" })
         return
@@ -240,7 +238,7 @@ io.on("connection", client => {
 
   client.on("sendMessage", async (data) => {
     try {
-      // Rate limit: max 10 messages per 30 seconds (prevent spam)
+      //! Rate limit: max 10 messages per 30 seconds (prevent spam)
       if (!checkSocketRateLimit(client.id, 'sendMessage', 10, 30000)) {
         client.emit("error", { message: "Terlalu sering mengirim pesan, tunggu beberapa saat" })
         return
@@ -261,7 +259,7 @@ io.on("connection", client => {
 
   client.on("getMessages", async () => {
     try {
-      // Rate limit: max 20 getMessages per minute
+      //! Rate limit: max 20 getMessages per minute
       if (!checkSocketRateLimit(client.id, 'getMessages', 20, 60000)) {
         client.emit("error", { message: "Terlalu sering request pesan" })
         return
@@ -274,10 +272,9 @@ io.on("connection", client => {
     }
   })
 
-  // Get online users
+
   client.on("getOnlineUsers", () => {
     try {
-      // Rate limit: max 20 getOnlineUsers per minute
       if (!checkSocketRateLimit(client.id, 'getOnlineUsers', 20, 60000)) {
         client.emit("error", { message: "Terlalu sering request user online" })
         return
@@ -295,7 +292,6 @@ io.on("connection", client => {
     if (user) {
       onlineUsers.delete(client.id)
       
-      // Bersihkan rate limit data saat disconnect
       const keys = Array.from(socketRateLimits.keys()).filter(k => k.startsWith(client.id))
       keys.forEach(key => socketRateLimits.delete(key))
       
