@@ -130,6 +130,7 @@ function Dhasboard() {
     }
   }
 
+
   const handleSaveProfile = () => {
     setNama(editNama);
     setProfesi(editProfesi);
@@ -511,7 +512,7 @@ function Dhasboard() {
             />
             <button
               type="submit"
-              onClick={() => sound.play()}
+              onClick={() => disturb === "unDisturb" ? "" : sound.play()}
               className="w-9 h-9 text-gray-600 border-none rounded-full text-lg cursor-pointer flex items-center justify-center transition button-message"
             >
               <IoSend size={26} />
