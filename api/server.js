@@ -19,7 +19,7 @@ let token
 const app = express();
 const port = process.env.PORT || 5000;
 const nodeEnv = process.env.NODE_ENV || 'development';
-const frontendUrl = 'https://and-navy.vercel.app';
+const frontendUrl = 'http://localhost:5173';
 
 app.use(
   cors({
@@ -167,7 +167,6 @@ app.delete("/chatDirect/:id", async (req, res) => {
   )
   console.log(findChat)
   res.json(findChat)
-  findChat()
 })
 
 // todo : socket 
@@ -178,7 +177,7 @@ const { Server } = require("socket.io")
 
 const io = new Server(server, {
   cors: {
-    origin: "https://and-navy.vercel.app",
+    origin: "http://localhost:5173",
     credentials: true
   },
   maxHttpBufferSize: 10e6, 
@@ -236,26 +235,36 @@ io.on("connection", client => {
     }
   })
 
-  client.on("sendMessage", async (data) => {
-    try {
-      //! Rate limit: max 10 messages per 30 seconds (prevent spam)
-      if (!checkSocketRateLimit(client.id, 'sendMessage', 10, 30000)) {
-        client.emit("error", { message: "Terlalu sering mengirim pesan, tunggu beberapa saat" })
-        return
-      }
-
-      const { nama, profesi, pesan, profileImage } = data
-      
-      const newChat = new Chat({ nama, profesi, pesan, profileImage })
-      await newChat.save()
-      
-      io.emit("receiveMessage", { nama, profesi, pesan, profileImage, timestamp: new Date() })
-      
-      console.log("Chat saved:", { nama, profesi, pesan })
-    } catch (error) {
-      console.error("Error saving chat:", error)
+ client.on("sendMessage", async (data) => {
+  try {
+    if (!checkSocketRateLimit(client.id, 'sendMessage', 10, 30000)) {
+      client.emit("error", { message: "Terlalu sering mengirim pesan" })
+      return
     }
-  })
+
+    console.log("DATA DARI FE:", {
+      hasImg: !!data.img,
+      imgLength: data.img?.length
+    })
+
+    const { nama, profesi, pesan, profileImage, img } = data
+
+    const newChat = new Chat({
+      nama,
+      profesi,
+      pesan,
+      profileImage,
+      img
+    })
+
+    const savedChat = await newChat.save()
+
+    io.emit("receiveMessage", savedChat)
+  } catch (error) {
+    console.error("Error saving chat:", error)
+  }
+})
+
 
   client.on("getMessages", async () => {
     try {

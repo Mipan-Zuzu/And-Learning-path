@@ -29,7 +29,7 @@ import {
 } from "react-icons/bs";
 import { IoMdSettings } from "react-icons/io";
 
-const API_URL = "https://and-api-ten.vercel.app";
+const API_URL = "http://localhost:5000";
 
 function Dhasboard() {
   const [socket, setSocket] = useState(null);
@@ -106,6 +106,32 @@ function Dhasboard() {
     };
   }, []);
 
+  const compressImage = (file, quality = 0.3, maxWidth = 500) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+
+      reader.onload = () => {
+        const img = new Image();
+        img.src = reader.result;
+
+        img.onload = () => {
+          const scale = Math.min(1, maxWidth / img.width);
+          const canvas = document.createElement("canvas");
+
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          const compressed = canvas.toDataURL("image/jpeg", quality);
+          resolve(compressed);
+        };
+      };
+    });
+  };
+
   const handleProfileImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -117,19 +143,22 @@ function Dhasboard() {
     }
   };
 
-  const [imgAplouds, setImgAplouds] = useState()
+  const handleimgchat = async (e) => {
+    if (!socket) return;
 
-  const handleimgchat = (e) => {
-    const file = e.target.files[0]
-    if(file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImgAplouds(file)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
+    const file = e.target.files[0];
+    if (!file) return;
 
+    const compressedImg = await compressImage(file, 0.3, 500);
+
+    socket.emit("sendMessage", {
+      nama,
+      profesi,
+      pesan: `Picture ${nama}`,
+      profileImage,
+      img: compressedImg,
+    });
+  };
 
   const handleSaveProfile = () => {
     setNama(editNama);
@@ -139,7 +168,6 @@ function Dhasboard() {
     localStorage.setItem("nama", editNama);
     localStorage.setItem("profesi", editProfesi);
     localStorage.setItem("profileImage", editImage);
-    
 
     if (socket) {
       socket.emit("userOnline", {
@@ -170,8 +198,6 @@ function Dhasboard() {
         profileImage,
       });
     }
-
-    console.log(imgAplouds)
 
     setNewMessage("");
   };
@@ -373,7 +399,7 @@ function Dhasboard() {
                       </div>
                       <div
                         className={`text-gray-900 p-5 py-2 rounded-2xl mb-1 text-sm ${
-                          msg.pesan.length <= 5
+                          msg.img || msg.pesan.length <= 15
                             ? "border-none"
                             : "border-2 border-gray-400"
                         }`}
@@ -383,6 +409,13 @@ function Dhasboard() {
                         }}
                       >
                         <span>{msg.pesan}</span>
+                        {msg.img && (
+                          <img
+                            src={msg.img}
+                            alt="chat-img"
+                            className="max-w-[200px] mt-2"
+                          />
+                        )}
                       </div>
                       <div className="text-end ml-5 mt-3 flex gap-3">
                         <div className="text-xs text-gray-500 px-1">
@@ -427,16 +460,16 @@ function Dhasboard() {
           style={{ border: "1px solid #C0C0C0", backgroundColor: "#D9D9D9" }}
         >
           <div className="absolute left-5 -mt-16 mb">
-              <label className="flex gap-3 w-50 hover:bg-gray-200 p-2 rounded-sm cursor-pointer">
-                  <IoImages size={25} />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleimgchat}
-                    className="hidden"
-                  />
-                  <p className="font-semibold mt-1 text-sm">Uploud picture</p>
-                </label>
+            <label className="flex gap-3 w-50 hover:bg-gray-200 p-2 rounded-sm cursor-pointer">
+              <IoImages size={25} />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleimgchat}
+                className="hidden"
+              />
+              <p className="font-semibold mt-1 text-sm">Uploud picture</p>
+            </label>
             <button className="flex gap-3 hover:bg-gray-200 p-2 w-50 rounded-sm cursor-pointer">
               <p className="">
                 <FaSquarePollHorizontal size={25} />
@@ -512,7 +545,7 @@ function Dhasboard() {
             />
             <button
               type="submit"
-              onClick={() => disturb === "unDisturb" ? "" : sound.play()}
+              onClick={() => (disturb === "unDisturb" ? "" : sound.play())}
               className="w-9 h-9 text-gray-600 border-none rounded-full text-lg cursor-pointer flex items-center justify-center transition button-message"
             >
               <IoSend size={26} />
