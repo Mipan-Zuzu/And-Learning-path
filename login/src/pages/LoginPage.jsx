@@ -33,27 +33,39 @@ const LoginPage = () => {
     }
     
     const checkLogin = async () => {
-      const res = await fetch(`https://fixed-ant-ands-9cc7ffdd.koyeb.app/login`, {
+  try {
+    const res = await fetch(
+      "https://fixed-ant-ands-9cc7ffdd.koyeb.app/login",
+      {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          Email: Email,
-          Password: Password,
-        }),
-      })
-      const data = await res.json();
-      if (data.login === false) {
-        setCheckRes(data.message);
-        console.log(data.login)
-        return;
+        body: JSON.stringify({ Email, Password }),
       }
+    );
 
-      if (data.login === true) {
-        console.log(data.login)
-        navigate("/home");
-      }
+    if (!res.ok) {
+      const err = await res.json();
+      setCheckRes(err.message || "Login gagal");
+      return;
     }
+
+    const session = await fetch(
+      "https://fixed-ant-ands-9cc7ffdd.koyeb.app/check-session",
+      { credentials: "include" }
+    );
+
+    const sessionData = await session.json();
+
+    if (sessionData.login === true) {
+      navigate("/home");
+    } else {
+      setCheckRes("Session tidak tersimpan (cookie diblok)");
+    }
+  } catch {
+    setCheckRes("Server error");
+  }
+};
 
     validator.isEmail(Email) === true
       ? console.log({ message: "Email valid" })

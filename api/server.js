@@ -128,9 +128,9 @@ const loginCheck = async (req, res) => {
 
     res.cookie("token", newToken, {
   httpOnly: true,
-  secure: true,   
-  sameSite: "none",   
-  maxAge: 60 * 60 * 1000, 
+  secure: nodeEnv === "production",
+  sameSite: nodeEnv === "production" ? "none" : "lax",
+  maxAge: 60 * 60 * 1000,
 })
       .status(200)
       .json({ login: true, message: "login berhasil" });
