@@ -17,6 +17,20 @@ const chatSchema = new mongoose.Schema({
   profileImage: { type: String, default: "" },
   timestamp: { type: Date, default: Date.now },
   img: { type: String, default: ""},
+  gif: { type: String, default: "" },
+  gifPreview: { type: String, default: "" },
+  gifOriginal: { type: String, default: "" },
+  replayMsg: { type: String, default: "" },
+  replayName: { type: String, default: "" },
+  replayImg: { type: String, default: "" },
+});
+
+const imageSchema = new mongoose.Schema({
+  url: { type: String, required: true },
+  type: { type: String, default: "gif" },
+  nama: { type: String, default: "" },
+  profesi: { type: String, default: "" },
+  timestamp: { type: Date, default: Date.now },
 });
 
 const groupSchema = new mongoose.Schema({
@@ -28,6 +42,7 @@ const groupSchema = new mongoose.Schema({
 module.exports = {
   User: mongoose.model("User", userSchema),
   Chat: mongoose.model("Chat", chatSchema),
-  Group: mongoose.model("Group", groupSchema)
+  Group: mongoose.model("Group", groupSchema),
+  Image: mongoose.model("Image", imageSchema),
 };
 

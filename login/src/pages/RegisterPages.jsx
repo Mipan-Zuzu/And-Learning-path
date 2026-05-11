@@ -37,7 +37,7 @@ const RegisterPage = () => {
 
 
         const sendApi = () => {
-            fetch(`https://personal-talya-and-path-learning-38ee2f3f.koyeb.app/result`, {
+            fetch(`http://localhost:5000/result`, {
             method : "POST",
             headers : {"Content-Type": "application/json"},
             body : JSON.stringify({ Email: Email ,Password : Password})

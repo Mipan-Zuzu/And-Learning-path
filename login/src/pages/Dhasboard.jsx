@@ -1,44 +1,32 @@
 import "../index.css";
-import React, { useEffect, useState } from "react";
-import EmojiPicker from "emoji-picker-react";
-import { io } from "socket.io-client";
+import React, { lazy, useEffect, useRef, useState } from "react";
 import {
-  FiUser,
-  FiMessageCircle,
-  FiSettings,
   FiBell,
   FiBellOff,
-  FiSend,
-  FiUsers,
+  FiMapPin,
+  FiMenu,
+  FiMessageCircle,
   FiPlus,
-  FiEdit2,
-  FiX,
-  FiTrash,
+  FiSettings,
+  FiSidebar,
+  FiUser,
 } from "react-icons/fi";
-import { FaSquarePollHorizontal } from "react-icons/fa6";
-import { RiPushpinLine } from "react-icons/ri";
-import { MdBlock, MdOutlineEmojiEmotions, MdDraw } from "react-icons/md";
-import { IoSend, IoArrowRedoSharp, IoImages } from "react-icons/io5";
-import { LuSticker } from "react-icons/lu";
 import axios from "axios";
-import { TbCapture } from "react-icons/tb";
-import {
-  BsPinAngleFill,
-  BsLayoutSidebarInsetReverse,
-  BsLayoutSidebarInset,
-} from "react-icons/bs";
-import { IoMdSettings } from "react-icons/io";
+import { useSocket } from "../hooks/useSocket";
+import ChatMessage from "../components/chat/ChatMessage";
+import ChatInput from "../components/chat/ChatInput";
+import ReplyPreview from "../components/chat/ReplyPreview";
+import ProfileModal from "../components/profile/ProfileModal";
+import ContextMenu from "../components/chat/ContextMenu";
 
-const API_URL = "https://and-api-ten.vercel.app";
+const GifPicker = lazy(() => import("../components/GifPicker"));
+const API_URL = "http://localhost:5000";
 
 function Dhasboard() {
-  const [socket, setSocket] = useState(null);
-  const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [nama, setNama] = useState("");
   const [profesi, setProfesi] = useState("");
   const [profileImage, setProfileImage] = useState("");
-  const [onlineUsers, setOnlineUsers] = useState([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [editNama, setEditNama] = useState("");
   const [editProfesi, setEditProfesi] = useState("");
@@ -46,12 +34,39 @@ function Dhasboard() {
   const [disturb, setdisturb] = useState("unDisturb");
   const [pin, setpin] = useState("");
 
-  const sound = new Audio("/sound/buble.mp3");
+  const soundRef = useRef(null);
 
   const [replayMsg, setReplayMsg] = useState("");
   const [replayName, setReplayName] = useState("");
+  const [replayImg, setReplayImg] = useState("");
 
   const [showPicker, setShowPicker] = useState(false);
+  const [gifs, setGifs] = useState([]);
+  const [gifSearchInput, setGifSearchInput] = useState("");
+  const [loadingGifs, setLoadingGifs] = useState(false);
+  const gifSearchTimeoutRef = useRef(null);
+  const [isDataSaverMode, setIsDataSaverMode] = useState(true);
+  const [loadedGifIds, setLoadedGifIds] = useState({});
+  const featuredGifsCacheRef = useRef(null);
+  const gifSearchCacheRef = useRef(new Map());
+  const activeGifRequestRef = useRef(null);
+
+  const [rightside, setRightside] = useState("hidden");
+  const [leftside, setLeftside] = useState("hidden");
+  const [sendFile, setSendFile] = useState("hidden");
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, msg: null });
+  const longPressTimeoutRef = useRef(null);
+  const typingStopTimeoutRef = useRef(null);
+  const [isSending, setIsSending] = useState(false);
+  const [isTypingSelf, setIsTypingSelf] = useState(false);
+
+  const { socket, messages, setMessages, onlineUsers, typingUsers, emitUserOnline, emitTypingStart, emitTypingStop } = useSocket({
+    apiUrl: API_URL,
+    nama,
+    profesi,
+    profileImage,
+    messageLimit: 80,
+  });
 
   useEffect(() => {
     const storedNama = localStorage.getItem("nama") || "User";
@@ -65,44 +80,30 @@ function Dhasboard() {
     setEditProfesi(storedProfesi);
     setEditImage(storedImage);
 
-    const newSocket = io(API_URL);
-    setSocket(newSocket);
-
-    newSocket.emit("userOnline", {
-      nama: storedNama,
-      profesi: storedProfesi,
-      profileImage: storedImage,
-    });
-    newSocket.emit("getMessages");
-    newSocket.emit("getOnlineUsers");
-
-    //* Listen events
-    newSocket.on("allMessages", (data) => {
-      setMessages(data);
-    });
-
-    newSocket.on("receiveMessage", (data) => {
-      setMessages((prev) => [...prev, data]);
-    });
-
-    newSocket.on("onlineUsersList", (users) => {
-      setOnlineUsers(users);
-    });
-
-    newSocket.on("userStatusUpdate", (data) => {
-      const { type, user } = data;
-      if (type === "online") {
-        setOnlineUsers((prev) => {
-          const exists = prev.some((u) => u.nama === user.nama);
-          return exists ? prev : [...prev, user];
-        });
-      } else if (type === "offline") {
-        setOnlineUsers((prev) => prev.filter((u) => u.nama !== user.nama));
-      }
-    });
-
     return () => {
-      newSocket.disconnect();
+      if (gifSearchTimeoutRef.current) clearTimeout(gifSearchTimeoutRef.current);
+      if (activeGifRequestRef.current) activeGifRequestRef.current.abort();
+      if (typingStopTimeoutRef.current) clearTimeout(typingStopTimeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    soundRef.current = new Audio("/sound/buble.mp3");
+  }, []);
+
+  useEffect(() => {
+    const saveData = navigator?.connection?.saveData;
+    const effectiveType = navigator?.connection?.effectiveType || "";
+    if (saveData || /2g|3g/.test(effectiveType)) setIsDataSaverMode(true);
+  }, []);
+
+  useEffect(() => {
+    const closeContextMenu = () => setContextMenu((prev) => ({ ...prev, visible: false }));
+    window.addEventListener("click", closeContextMenu);
+    window.addEventListener("scroll", closeContextMenu, true);
+    return () => {
+      window.removeEventListener("click", closeContextMenu);
+      window.removeEventListener("scroll", closeContextMenu, true);
     };
   }, []);
 
@@ -110,23 +111,17 @@ function Dhasboard() {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-
       reader.onload = () => {
         const img = new Image();
         img.src = reader.result;
-
         img.onload = () => {
           const scale = Math.min(1, maxWidth / img.width);
           const canvas = document.createElement("canvas");
-
           canvas.width = img.width * scale;
           canvas.height = img.height * scale;
-
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-          const compressed = canvas.toDataURL("image/jpeg", quality);
-          resolve(compressed);
+          resolve(canvas.toDataURL("image/jpeg", quality));
         };
       };
     });
@@ -134,23 +129,17 @@ function Dhasboard() {
 
   const handleProfileImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditImage(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => setEditImage(reader.result);
+    reader.readAsDataURL(file);
   };
 
   const handleimgchat = async (e) => {
     if (!socket) return;
-
     const file = e.target.files[0];
     if (!file) return;
-
     const compressedImg = await compressImage(file, 0.3, 500);
-
     socket.emit("sendMessage", {
       nama,
       profesi,
@@ -161,138 +150,294 @@ function Dhasboard() {
   };
 
   const handleSaveProfile = () => {
+    const normalizeProfileImage = (rawImage, username) => {
+      if (!rawImage) return "";
+      if (rawImage.startsWith("data:")) {
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(username || "User")}&background=0D8ABC&color=fff`;
+      }
+      return rawImage;
+    };
+
+    const lightweightProfileImage = normalizeProfileImage(editImage, editNama);
     setNama(editNama);
     setProfesi(editProfesi);
-    setProfileImage(editImage);
+    setProfileImage(lightweightProfileImage);
 
     localStorage.setItem("nama", editNama);
     localStorage.setItem("profesi", editProfesi);
-    localStorage.setItem("profileImage", editImage);
+    localStorage.setItem("profileImage", lightweightProfileImage);
 
-    if (socket) {
-      socket.emit("userOnline", {
-        nama: editNama,
-        profesi: editProfesi,
-        profileImage: editImage,
-      });
-    }
-
+    emitUserOnline({ nama: editNama, profesi: editProfesi, profileImage: lightweightProfileImage });
     setShowProfileModal(false);
   };
 
   const handleSendMessage = (e) => {
-    setReplayMsg("");
-    setReplayName("");
     e.preventDefault();
-    if (newMessage.trim() === "") return;
+    if (!socket || newMessage.trim() === "" || isSending) return;
 
-    if (socket) {
-      socket.emit("sendMessage", {
-        nama,
-        profesi,
-        pesan: `${
-          replayMsg === ""
-            ? newMessage
-            : `Replay "${replayMsg.substring(0, 30) + "..."}" | ${newMessage}`
-        }`,
-        profileImage,
-      });
+    setIsSending(true);
+    if (isTypingSelf) {
+      emitTypingStop(nama);
+      setIsTypingSelf(false);
     }
+    if (typingStopTimeoutRef.current) clearTimeout(typingStopTimeoutRef.current);
 
-    setNewMessage("");
+    const payload = {
+      nama,
+      profesi,
+      pesan: newMessage,
+      profileImage,
+      replayMsg,
+      replayName,
+      replayImg,
+    };
+
+    const clearInputState = () => {
+      setNewMessage("");
+      setReplayMsg("");
+      setReplayName("");
+      setReplayImg("");
+    };
+
+    let hasSettled = false;
+    const done = () => {
+      if (hasSettled) return;
+      hasSettled = true;
+      setIsSending(false);
+    };
+
+    const fallbackTimer = setTimeout(done, 6000);
+    socket.emit("sendMessage", payload, (ack) => {
+      clearTimeout(fallbackTimer);
+      if (ack?.ok) clearInputState();
+      done();
+    });
   };
 
-  const deleteMessagesss = async (index) => {
+  const handleMessageTyping = (value) => {
+    if (!nama) return;
+    const hasText = value.trim().length > 0;
+    if (hasText && !isTypingSelf) {
+      emitTypingStart(nama);
+      setIsTypingSelf(true);
+    }
+    if (typingStopTimeoutRef.current) clearTimeout(typingStopTimeoutRef.current);
+    typingStopTimeoutRef.current = setTimeout(() => {
+      emitTypingStop(nama);
+      setIsTypingSelf(false);
+    }, 1200);
+    if (!hasText) {
+      emitTypingStop(nama);
+      setIsTypingSelf(false);
+    }
+  };
+
+  const deleteMessagesss = async (id) => {
     try {
-      await axios.delete(`${API_URL}/chatDirect/${index}`);
-      setMessages((prev) => prev.filter((msg) => msg._id !== index));
+      await axios.delete(`${API_URL}/chatDirect/${id}`);
+      setMessages((prev) => prev.filter((msg) => msg._id !== id));
     } catch (error) {
       console.error("Delete failed:", error);
     }
   };
 
-  const [rightside, setRightside] = useState("hidden");
-  console.log(rightside);
-  const [leftside, setLeftside] = useState("hidden");
-
-  console.log(disturb);
-
-  const [sendFile, setSendFile] = useState("hidden");
-
-  const replayFunc = (messages, nama) => {
-    setReplayName(nama);
-    setReplayMsg(messages);
+  const replayFunc = (messageText, fromName, img = "") => {
+    setReplayName(fromName);
+    setReplayMsg(messageText);
+    setReplayImg(img);
   };
 
-  const saveMessage = (data) => {
-    setNewMessage(data);
+  const fetchFeaturedGifs = async () => {
+    if (featuredGifsCacheRef.current) return setGifs(featuredGifsCacheRef.current);
+    setLoadingGifs(true);
+    try {
+      if (activeGifRequestRef.current) activeGifRequestRef.current.abort();
+      const controller = new AbortController();
+      activeGifRequestRef.current = controller;
+      const response = await axios.get(`${API_URL}/api/gifs/featured`, { signal: controller.signal });
+      const results = (response.data.results || []).slice(0, 8);
+      featuredGifsCacheRef.current = results;
+      setGifs(results);
+    } catch (error) {
+      if (error.name !== "CanceledError" && error.code !== "ERR_CANCELED") {
+        console.error("Error fetching GIFs:", error);
+        setGifs([]);
+      }
+    } finally {
+      setLoadingGifs(false);
+    }
+  };
+
+  const searchGifs = async (query) => {
+    if (!query.trim()) return fetchFeaturedGifs();
+    const normalizedQuery = query.trim().toLowerCase();
+    if (gifSearchCacheRef.current.has(normalizedQuery)) {
+      return setGifs(gifSearchCacheRef.current.get(normalizedQuery));
+    }
+    setLoadingGifs(true);
+    try {
+      if (activeGifRequestRef.current) activeGifRequestRef.current.abort();
+      const controller = new AbortController();
+      activeGifRequestRef.current = controller;
+      const response = await axios.get(`${API_URL}/api/gifs/search?q=${encodeURIComponent(query)}`, {
+        signal: controller.signal,
+      });
+      const results = (response.data.results || []).slice(0, 8);
+      gifSearchCacheRef.current.set(normalizedQuery, results);
+      setGifs(results);
+    } catch (error) {
+      if (error.name !== "CanceledError" && error.code !== "ERR_CANCELED") {
+        console.error("Error searching GIFs:", error);
+        setGifs([]);
+      }
+    } finally {
+      setLoadingGifs(false);
+    }
+  };
+
+  const handleGifSearch = (e) => {
+    const nextValue = e.target.value;
+    setGifSearchInput(nextValue);
+    if (gifSearchTimeoutRef.current) clearTimeout(gifSearchTimeoutRef.current);
+    gifSearchTimeoutRef.current = setTimeout(() => searchGifs(nextValue), 350);
+  };
+
+  const pickFirstString = (...values) => values.find((v) => typeof v === "string" && v.trim()) || "";
+
+  const resolveGifUrls = (gifItem) => {
+    const webpUrl = pickFirstString(
+      gifItem?.webp,
+      gifItem?.tinywebp,
+      gifItem?.tinywebp?.url,
+      gifItem?.images?.fixed_width?.webp,
+      gifItem?.images?.downsized?.webp,
+      gifItem?.images?.original?.webp
+    );
+    const originalUrl = pickFirstString(gifItem?.url, gifItem?.gif, gifItem?.original, gifItem?.images?.original?.url);
+    const compressedUrl = pickFirstString(
+      webpUrl,
+      gifItem?.tinygif,
+      gifItem?.tinygif?.url,
+      gifItem?.images?.fixed_width_small?.url,
+      gifItem?.images?.downsized_small?.url,
+      gifItem?.nanogif,
+      gifItem?.nanogif?.url,
+      gifItem?.preview,
+      gifItem?.preview?.url,
+      originalUrl
+    );
+    return { compressedUrl, originalUrl: originalUrl || compressedUrl };
+  };
+
+  const resolveGifPreview = (gifItem) =>
+    pickFirstString(
+      gifItem?.nanogif?.preview,
+      gifItem?.tinygifpreview,
+      gifItem?.tinygif?.preview,
+      gifItem?.preview,
+      gifItem?.images?.fixed_width_still?.url,
+      gifItem?.images?.preview_gif?.url,
+      gifItem?.url
+    );
+
+  const insertGifToMessage = async (gifItem) => {
+    if (!socket) return;
+    const { compressedUrl, originalUrl } = resolveGifUrls(gifItem);
+    const previewUrl = resolveGifPreview(gifItem);
+    if (!compressedUrl) return;
+    try {
+      await axios.post(`${API_URL}/images`, { url: compressedUrl, type: "gif", nama, profesi });
+    } catch (error) {
+      console.error("Error saving gif to images:", error);
+    }
+    socket.emit("sendMessage", {
+      nama,
+      profesi,
+      pesan: "[GIF]",
+      profileImage,
+      gif: compressedUrl,
+      gifPreview: previewUrl,
+      gifOriginal: originalUrl,
+      replayMsg,
+      replayName,
+      replayImg,
+    });
+    setReplayMsg("");
+    setReplayName("");
+    setReplayImg("");
+    setShowPicker(false);
+  };
+
+  const openContextMenu = (x, y, msg) => {
+    const menuWidth = 170;
+    const menuHeight = 140;
+    const safeX = Math.min(x, window.innerWidth - menuWidth - 12);
+    const safeY = Math.min(y, window.innerHeight - menuHeight - 12);
+    setContextMenu({ visible: true, x: Math.max(12, safeX), y: Math.max(12, safeY), msg });
+  };
+
+  const handleMessageContextMenu = (e, msg) => {
+    e.preventDefault();
+    openContextMenu(e.clientX, e.clientY, msg);
+  };
+
+  const handleTouchStart = (e, msg) => {
+    const touch = e.touches?.[0];
+    if (!touch) return;
+    longPressTimeoutRef.current = setTimeout(() => openContextMenu(touch.clientX, touch.clientY, msg), 500);
+  };
+
+  const clearLongPress = () => {
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  };
+
+  const runContextAction = (action) => {
+    const msg = contextMenu.msg;
+    if (!msg) return;
+    if (action === "delete") deleteMessagesss(msg._id);
+    if (action === "pin") setpin(msg.pesan);
+    if (action === "reply") replayFunc(msg.pesan, msg.nama, msg.img || msg.gif);
+    setContextMenu((prev) => ({ ...prev, visible: false }));
   };
 
   return (
-    <div
-      className="crt-bg h-screen flex overflow-hidden"
-      style={{ backgroundColor: "#D9D9D9" }}
-    >
+    <div className="crt-bg h-screen flex overflow-hidden" style={{ backgroundColor: "#D9D9D9" }}>
       <div
         className={`flex flex-col items-center pt-5 pb-5 w-20 absolute h-full z-50 ${leftside} ${
           leftside === "block" ? "aniamtion" : ""
         } shadow-2xl`}
-        style={{
-          backgroundColor: "#E5E5E5",
-          borderRight: "1px solid #C0C0C0",
-        }}
+        style={{ backgroundColor: "#E5E5E5", borderRight: "1px solid #C0C0C0" }}
       >
-        <button
-          onClick={() => setLeftside(leftside === "block" ? "hidden" : "block")}
-          className="cursor-pointer"
-        >
+        <button onClick={() => setLeftside(leftside === "block" ? "hidden" : "block")} className="cursor-pointer">
           <img src="/img/icon.png" alt="logo" width={40} />
         </button>
         <div className="mb-8 cursor-pointer opacity-60 hover:opacity-100 transition"></div>
         <div className="flex-1 flex flex-col gap-8">
-          <div className="cursor-pointer opacity-60 hover:opacity-100 transition">
-            <FiUser size={24} />
-          </div>
-          <div className="cursor-pointer opacity-60 hover:opacity-100 transition">
-            <FiMessageCircle size={24} />
-          </div>
-          <div className="cursor-pointer opacity-60 hover:opacity-100 transition title='Add Group'">
-            <FiPlus size={24} />
-          </div>
+          <div className="cursor-pointer opacity-60 hover:opacity-100 transition"><FiUser size={24} /></div>
+          <div className="cursor-pointer opacity-60 hover:opacity-100 transition"><FiMessageCircle size={24} /></div>
+          <div className="cursor-pointer opacity-60 hover:opacity-100 transition title='Add Group'"><FiPlus size={24} /></div>
         </div>
         <div
           className="mb-5 cursor-pointer opacity-60 hover:opacity-100 transition hover:rotate-180"
           onClick={() => setShowProfileModal(true)}
           title="Edit Profile"
         >
-          <IoMdSettings size={24} />
+          <FiSettings size={24} />
         </div>
       </div>
 
       <div className="flex-1 flex flex-col">
-        <div
-          className="px-6 py-4 flex justify-between items-center"
-          style={{
-            backgroundColor: "#D9D9D9",
-            borderBottom: "1px solid #C0C0C0",
-          }}
-        >
+        <div className="px-6 py-4 flex justify-between items-center" style={{ backgroundColor: "#D9D9D9", borderBottom: "1px solid #C0C0C0" }}>
           <div className="flex items-center gap-3">
-            <button
-              className="cursor-pointer"
-              onClick={() =>
-                setLeftside(leftside === "hidden" ? "block" : "hidden")
-              }
-            >
-              <BsLayoutSidebarInsetReverse size={20} color="gray" />
+            <button className="cursor-pointer" onClick={() => setLeftside(leftside === "hidden" ? "block" : "hidden")}>
+              <FiMenu size={20} color="gray" />
             </button>
             <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm overflow-hidden border-green-600 border-3">
               {profileImage ? (
-                <img
-                  src={profileImage}
-                  alt="profile"
-                  className="w-full h-full object-cover"
-                />
+                <img src={profileImage} alt="profile" className="w-full h-full object-cover" />
               ) : (
                 nama.charAt(0).toUpperCase()
               )}
@@ -308,13 +453,7 @@ function Dhasboard() {
             } nontification`}
           >
             <div className="flex">
-              <p className="mt-3 -ml-5 mr-5">
-                {disturb === "unDisturb" ? (
-                  <FiBellOff size={20} className="bell-disturb" />
-                ) : (
-                  <FiBell size={20} className="bell-disturb" />
-                )}
-              </p>
+              <p className="mt-3 -ml-5 mr-5">{disturb === "unDisturb" ? <FiBellOff size={20} /> : <FiBell size={20} />}</p>
               <div>
                 <p className="text-[10px]">Mode disturb</p>
                 <p>{disturb === "unDisturb" ? "Actived" : "De Actived"}</p>
@@ -323,306 +462,118 @@ function Dhasboard() {
           </div>
           <div className="flex ml-3">
             <div className="opacity-70 hover:opacity-100 flex">
-              <button
-                onClick={() =>
-                  setdisturb(disturb === "unDisturb" ? "disturb" : "unDisturb")
-                }
-                aria-label="toggle-do-not-disturb"
-                className="cursor-pointer"
-              >
-                {disturb === "unDisturb" ? (
-                  <FiBellOff size={20} title="Un Disturb" />
-                ) : (
-                  <FiBell size={20} title="Disturb" />
-                )}
+              <button onClick={() => setdisturb(disturb === "unDisturb" ? "disturb" : "unDisturb")} className="cursor-pointer">
+                {disturb === "unDisturb" ? <FiBellOff size={20} title="Un Disturb" /> : <FiBell size={20} title="Disturb" />}
               </button>
-              <button
-                className={`ml-10 cursor-pointer ${
-                  rightside === "block" ? "hidden" : "block"
-                }`}
-                onClick={() =>
-                  setRightside(rightside === "hidden" ? "block" : "hidden")
-                }
-              >
-                <BsLayoutSidebarInsetReverse size={20} />
+              <button className={`ml-10 cursor-pointer ${rightside === "block" ? "hidden" : "block"}`} onClick={() => setRightside(rightside === "hidden" ? "block" : "hidden")}>
+                <FiSidebar size={20} />
               </button>
             </div>
           </div>
         </div>
-        <h1
-          className={`mt-3 text-center flex justify-center gap-3 font-mono cursor-pointer ${
-            pin.length === 0 ? "hidden" : "block"
-          }`}
-        >
-          <BsPinAngleFill size={17} />
+
+        <h1 className={`mt-3 text-center flex justify-center gap-3 font-mono cursor-pointer ${pin.length === 0 ? "hidden" : "block"}`}>
+          <FiMapPin size={17} />
           {pin.substring(0, 30)}...
         </h1>
+
         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-3">
-          <h1 className="text-center text-gray-400 font-mono opacity-25">
-            #Senang belajar dengan <span className="text-black">&And</span>
-          </h1>
+          <h1 className="text-center text-gray-400 font-mono opacity-25">#Senang belajar dengan <span className="text-black">&And</span></h1>
           {messages.length === 0 ? (
-            <p className="text-center text-gray-400 mt-10 loading">
-              fetching message 98%
-            </p>
+            <p className="text-center text-gray-400 mt-10 loading">fetching message 98%</p>
           ) : (
-            messages.map((msg, index) => {
-              const isOwnMessage = msg.nama === nama;
-              return (
-                <div key={index} className="flex justify-start">
-                  <div className="flex gap-2 w-fit max-w-xs md:max-w-md ml-5">
-                    <div className="flex-shrink-0">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm overflow-hidden">
-                        {msg.profileImage ? (
-                          <img
-                            src={msg.profileImage}
-                            alt="profile"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          msg.nama.charAt(0).toUpperCase()
-                        )}
-                      </div>
-                    </div>
-                    <div className="w-fit max-w-xs md:max-w-md">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <strong className="text-gray-900 text-sm">
-                          {isOwnMessage ? (
-                            <span className="text-cyan-700">{msg.nama}</span>
-                          ) : (
-                            msg.nama
-                          )}
-                        </strong>
-                        <span className="text-xs text-gray-600 px-2 py-1 rounded-full">
-                          {msg.profesi}
-                        </span>
-                      </div>
-                      <div
-                        className={`text-gray-900 p-5 py-2 rounded-2xl mb-1 text-sm ${
-                          msg.img || msg.pesan.length <= 15
-                            ? "border-none"
-                            : "border-2 border-gray-400"
-                        }`}
-                        style={{
-                          wordBreak: "break-word",
-                          overflowWrap: "break-word",
-                        }}
-                      >
-                        <span>{msg.pesan}</span>
-                        {msg.img && (
-                          <img
-                            src={msg.img}
-                            alt="chat-img"
-                            className="max-w-[200px] mt-2"
-                          />
-                        )}
-                      </div>
-                      <div className="text-end ml-5 mt-3 flex gap-3">
-                        <div className="text-xs text-gray-500 px-1">
-                          {new Date(msg.timestamp).toLocaleTimeString("id-ID", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                        <div className="ml-10 flex gap-3">
-                          <button
-                            title="Delete"
-                            onClick={() => {
-                              deleteMessagesss(msg._id);
-                            }}
-                          >
-                            <FiTrash size={15} />
-                          </button>
-                          <button title="Pin" onClick={() => setpin(msg.pesan)}>
-                            <RiPushpinLine size={15} />
-                          </button>
-                          {!isOwnMessage && (
-                            <>
-                              <MdBlock title="Block" size={15} />
-                              <button
-                                onClick={() => replayFunc(msg.pesan, msg.nama)}
-                              >
-                                <IoArrowRedoSharp title="Replay" size={15} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
+            messages.map((msg) => (
+              <ChatMessage
+                key={msg._id || `${msg.nama}-${msg.timestamp}`}
+                msg={msg}
+                nama={nama}
+                isDataSaverMode={isDataSaverMode}
+                loadedGifIds={loadedGifIds}
+                setLoadedGifIds={setLoadedGifIds}
+                onContextMenu={handleMessageContextMenu}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={clearLongPress}
+                onTouchMove={clearLongPress}
+                onTouchCancel={clearLongPress}
+              />
+            ))
           )}
         </div>
-        <div
-          className={`px-30 py-20 absolute bottom-0 mb-20 ml-3 rounded-lg ${sendFile} file-show`}
-          style={{ border: "1px solid #C0C0C0", backgroundColor: "#D9D9D9" }}
-        >
-          <div className="absolute left-5 -mt-16 mb">
-            <label className="flex gap-3 w-50 hover:bg-gray-200 p-2 rounded-sm cursor-pointer">
-              <IoImages size={25} />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleimgchat}
-                className="hidden"
-              />
-              <p className="font-semibold mt-1 text-sm">Uploud picture</p>
-            </label>
-            <button className="flex gap-3 hover:bg-gray-200 p-2 w-50 rounded-sm cursor-pointer">
-              <p className="">
-                <FaSquarePollHorizontal size={25} />
-              </p>
-              <p className="font-semibold mt-1 text-sm">Create Poll</p>
-            </button>
-            <button className="flex gap-3 w-50 hover:bg-gray-200 p-2 rounded-sm cursor-pointer">
-              <p className="">
-                <TbCapture size={25} />
-              </p>
-              <p className="font-semibold mt-1 text-sm">Open Camera</p>
-            </button>
-          </div>
-        </div>
 
-        <div
-          className="px-6 py-4"
-          style={{ borderTop: "1px solid #C0C0C0", backgroundColor: "#D9D9D9" }}
-        >
-          <form
-            onSubmit={handleSendMessage}
-            className="flex gap-2 justify-center"
-          >
-            <button
-              type="button"
-              className="w-9 h-9 flex items-center 
-              justify-center rounded-full opacity-60 hover:opacity-100 transition cursor-pointer"
-              onClick={() =>
-                setSendFile(sendFile === "hidden" ? "block" : "hidden")
-              }
-            >
-              {sendFile === "hidden" ? (
-                <FiPlus size={25} />
-              ) : (
-                <FiX size={25} className="rotate" />
-              )}
-            </button>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowPicker(!showPicker)}
-                className="w-9 h-9 flex items-center justify-center rounded-full opacity-60 hover:opacity-100 transition"
-              >
-                <MdOutlineEmojiEmotions size={26} />
-              </button>
-              {showPicker && (
-                <div className="absolute bottom-20 -left-12 z-50">
-                  <EmojiPicker
-                    onEmojiClick={(emojiObject) => {
-                      setNewMessage((prev) => prev + emojiObject.emoji);
-                      setShowPicker(false);
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              className="w-9 h-9 flex items-center justify-center rounded-full opacity-60 hover:opacity-100 transition"
-            >
-              <LuSticker size={26} />
-            </button>
-            <input
-              type="text"
-              accept="image/*"
-              value={newMessage}
-              onChange={(e) => saveMessage(e.target.value)}
-              placeholder={`${
-                replayMsg === "" ? "# Message" : `Replay ${replayName}`
-              }`}
-              autoFocus
-              className="px-4 w-lg py-2 border rounded-xl font-semibold text-gray-900 text-sm outline-none focus:border-gray-500 transition input-message"
+        <ChatInput
+          replayPreview={<ReplyPreview replayMsg={replayMsg} replayName={replayName} replayImg={replayImg} onClear={() => { setReplayMsg(""); setReplayName(""); setReplayImg(""); }} />}
+          onSubmit={handleSendMessage}
+          sendFile={sendFile}
+          setSendFile={setSendFile}
+          handleimgchat={handleimgchat}
+          showPicker={showPicker}
+          setShowPicker={setShowPicker}
+          fetchFeaturedGifs={fetchFeaturedGifs}
+          gifPickerNode={
+            <GifPicker
+              showPicker={showPicker}
+              setShowPicker={setShowPicker}
+              gifSearchInput={gifSearchInput}
+              handleGifSearch={handleGifSearch}
+              fetchFeaturedGifs={fetchFeaturedGifs}
+              isDataSaverMode={isDataSaverMode}
+              setIsDataSaverMode={setIsDataSaverMode}
+              loadingGifs={loadingGifs}
+              gifs={gifs}
+              insertGifToMessage={insertGifToMessage}
+              resolveGifPreview={resolveGifPreview}
+              setGifSearchInput={setGifSearchInput}
             />
-            <button
-              type="submit"
-              onClick={() => (disturb === "unDisturb" ? "" : sound.play())}
-              className="w-9 h-9 text-gray-600 border-none rounded-full text-lg cursor-pointer flex items-center justify-center transition button-message"
-            >
-              <IoSend size={26} />
-            </button>
-            <button
-              type="button"
-              className="w-9 h-9 flex items-center justify-center rounded-full opacity-60 hover:opacity-100 transition"
-            >
-              <MdDraw size={26} />
-            </button>
-          </form>
-        </div>
+          }
+          newMessage={newMessage}
+          setNewMessage={setNewMessage}
+          disturb={disturb}
+          onPlaySound={() => soundRef.current?.play()}
+          isSending={isSending}
+          onMessageChange={handleMessageTyping}
+        />
       </div>
 
-      {/* Right Sidebar - User Status */}
-      <div
-        className={`w-56 px-5 py-5 overflow-y-auto absolute justify-end right-0 h-full ${rightside}`}
-        style={{ backgroundColor: "#D9D9D9", borderLeft: "1px solid #C0C0C0" }}
-      >
+      <div className={`w-56 px-5 py-5 overflow-y-auto absolute justify-end right-0 h-full ${rightside}`} style={{ backgroundColor: "#D9D9D9", borderLeft: "1px solid #C0C0C0" }}>
         <div className="flex flex-col gap-2">
           <div className="flex items-center mb-4">
-            <div
-              className="text-gray-900  px-3 py-2 rounded-lg originPixels cursor-pointer w-full text-center transition flex items-center justify-center gap-1"
-              style={{ backgroundColor: "#EEEEEE" }}
-              onMouseEnter={(e) => (e.target.style.backgroundColor = "#E0E0E0")}
-              onMouseLeave={(e) => (e.target.style.backgroundColor = "#EEEEEE")}
-            >
+            <div className="text-gray-900  px-3 py-2 rounded-lg originPixels cursor-pointer w-full text-center transition flex items-center justify-center gap-1" style={{ backgroundColor: "#EEEEEE" }}>
               <FiPlus size={16} /> Tambah teman
             </div>
-            <button
-              className="cursor-pointer ml-3"
-              onClick={() =>
-                setRightside(rightside === "hidden" ? "block" : "hidden")
-              }
-            >
-              <BsLayoutSidebarInset size={20} />
+            <button className="cursor-pointer ml-3" onClick={() => setRightside(rightside === "hidden" ? "block" : "hidden")}>
+              <FiSidebar size={20} />
             </button>
           </div>
-
-          <div className="text-xs text-gray-600  font-bold mt-4 mb-3 uppercase">
-            Online ({onlineUsers.length})
-          </div>
+          <div className="text-xs text-gray-600  font-bold mt-4 mb-3 uppercase">Online ({onlineUsers.length})</div>
           {onlineUsers.length === 0 ? (
             <p className="text-xs text-gray-400">Tidak ada user online</p>
           ) : (
             onlineUsers.map((user, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer text-gray-900 text-sm transition"
-                style={{}}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#EEEEEE")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor = "transparent")
-                }
-              >
+              <div key={index} className="flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer text-gray-900 text-sm transition">
                 <div className="relative">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
                     {user.profileImage ? (
-                      <img
-                        src={user.profileImage}
-                        alt="profile"
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={user.profileImage} alt="profile" className="w-full h-full object-cover" />
                     ) : (
                       user.nama.charAt(0).toUpperCase()
                     )}
                   </div>
-                  <div
-                    className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: "#4CAF50" }}
-                  ></div>
+                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#4CAF50" }}></div>
                 </div>
-                <div className="flex-1">
+                  <div className="flex-1">
                   <div className="font-semibold text-sm">{user.nama}</div>
-                  <div className="text-xs text-gray-500">{user.profesi}</div>
+                  {typingUsers.includes(user.nama) && user.nama !== nama ? (
+                    <div className="text-xs text-green-600 flex items-center gap-1">
+                      <span>typing</span>
+                      <span className="typing-dots">
+                        <span>.</span>
+                        <span>.</span>
+                        <span>.</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500">{user.profesi}</div>
+                  )}
                 </div>
               </div>
             ))
@@ -630,106 +581,59 @@ function Dhasboard() {
         </div>
       </div>
 
-      {/* Profile Edit Modal */}
-      {showProfileModal && (
-        <div className="fixed inset-0 bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-xl">
-          <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl text-gray-900">
-                <span className="font-bold">
-                  <span className="text-2xl">&</span>and
-                </span>{" "}
-                profile
-              </h2>
-              <button
-                onClick={() => setShowProfileModal(false)}
-                className="cursor-pointer opacity-60 hover:opacity-100 bg-gray-300 p-1 rounded-full"
-                title="Close"
-              >
-                <FiX size={24} title="Close" />
-              </button>
-            </div>
+      <ProfileModal
+        show={showProfileModal}
+        editNama={editNama}
+        editProfesi={editProfesi}
+        editImage={editImage}
+        setEditNama={setEditNama}
+        setEditProfesi={setEditProfesi}
+        onImageChange={handleProfileImageChange}
+        onClose={() => setShowProfileModal(false)}
+        onSave={handleSaveProfile}
+      />
 
-            <div className="mb-4 flex justify-center">
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full  flex items-center justify-center text-white font-bold text-2xl overflow-hidden">
-                  {editImage ? (
-                    <img
-                      src={editImage}
-                      alt="preview"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    editNama.charAt(0).toUpperCase()
-                  )}
-                </div>
-                <label className="absolute bottom-0 right-0 bg-blue-500 text-white p-2 rounded-full cursor-pointer hover:bg-blue-300">
-                  <FiPlus size={16} />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleProfileImageChange}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Username
-              </label>
-              <input
-                type="text"
-                value={editNama}
-                onChange={(e) => setEditNama(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg outline-none focus:border-blue-500"
-                style={{ borderColor: "#C0C0C0" }}
-              />
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Profesi
-              </label>
-              <input
-                type="text"
-                value={editProfesi}
-                onChange={(e) => setEditProfesi(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg outline-none focus:border-blue-500"
-                style={{ borderColor: "#C0C0C0" }}
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={handleSaveProfile}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition"
-              >
-                Simpan
-              </button>
-              <button
-                onClick={() => setShowProfileModal(false)}
-                className="flex-1 px-4 py-2 border rounded-lg font-semibold text-gray-900 hover:bg-gray-100 transition"
-                style={{ borderColor: "#C0C0C0" }}
-              >
-                Batal
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ContextMenu contextMenu={contextMenu} onAction={runContextAction} />
+      <style>{`
+        .context-menu-float {
+          animation: context-menu-up 0.18s ease-out;
+          transform-origin: top left;
+        }
+        @keyframes context-menu-up {
+          0% {
+            opacity: 0;
+            transform: translateY(10px) scale(0.9);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        .typing-dots span {
+          display: inline-block;
+          animation: typing-bounce 1.1s infinite ease-in-out;
+        }
+        .typing-dots span:nth-child(2) {
+          animation-delay: 0.15s;
+        }
+        .typing-dots span:nth-child(3) {
+          animation-delay: 0.3s;
+        }
+        @keyframes typing-bounce {
+          0%,
+          80%,
+          100% {
+            transform: translateY(0);
+            opacity: 0.45;
+          }
+          40% {
+            transform: translateY(-3px);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }
-
-const CardImg = () => {
-  console.log("img");
-  return (
-    <div className="z-50 bg-white p-20">
-      <h1>Pilih gambar vidio atau gif</h1>
-    </div>
-  );
-};
 
 export default Dhasboard;

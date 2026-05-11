@@ -33,7 +33,7 @@ const LoginPage = () => {
     }
     
     const checkLogin = async () => {
-      const res = await fetch(`https://personal-talya-and-path-learning-38ee2f3f.koyeb.app/login`, {
+      const res = await fetch(`http://localhost:5000/login`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
