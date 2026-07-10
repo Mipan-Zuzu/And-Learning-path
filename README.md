@@ -1,4 +1,4 @@
-# &And Sosial media learning (SML) - Colabortion Development guide
+# &And Sosial media learning - Colabortion Development guide
 
 Aplikasi chat real-time Stack : React, Node.js/Express, Socket.io, dan MongoDB.
 
